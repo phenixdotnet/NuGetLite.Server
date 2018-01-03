@@ -1,0 +1,30 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio 15
+VisualStudioVersion = 15.0.27205.2004
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{BE8C4785-4E38-4E18-B5E3-0C10D8BBA349}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NuGetLite.Server", "src\NuGetLite.Server\NuGetLite.Server.csproj", "{4882FE70-ABDA-4FC8-9CF0-DE5C3DF67368}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{4882FE70-ABDA-4FC8-9CF0-DE5C3DF67368}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{4882FE70-ABDA-4FC8-9CF0-DE5C3DF67368}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{4882FE70-ABDA-4FC8-9CF0-DE5C3DF67368}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{4882FE70-ABDA-4FC8-9CF0-DE5C3DF67368}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{4882FE70-ABDA-4FC8-9CF0-DE5C3DF67368} = {BE8C4785-4E38-4E18-B5E3-0C10D8BBA349}
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {1F500BAD-D7B3-489E-A808-22AA3A75462F}
+	EndGlobalSection
+EndGlobal
