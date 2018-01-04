@@ -1,25 +1,39 @@
 ﻿using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Hosting.Server.Features;
 using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.Options;
 using Newtonsoft.Json;
+using NuGetLite.Server.Models;
 using System;
-using System.Collections.Generic;
 using System.Linq;
-using System.Threading.Tasks;
 
 namespace NuGetLite.Server
 {
+    /// <summary>
+    /// Define the Service Index middleware which provide "static" index.json file with services information
+    /// </summary>
     public static class ServiceIndexMiddleware
     {
         private static string indexContent;
 
+        /// <summary>
+        /// Register the service index middleware at path "/v3/index.json"
+        /// </summary>
+        /// <param name="app"></param>
         public static void UseNuGetServiceIndex(this IApplicationBuilder app)
         {
             if (app == null)
                 throw new ArgumentNullException(nameof(app));
 
+            //var serverAddressesFeature = app.ServerFeatures.Get<IServerAddressesFeature>();
+            string baseUrl = "http://localhost:55981";
+
             var resources = new ServiceIndexResource[]
             {
-                new ServiceIndexResource(){ Id = "http://localhost:50175/api/v2", Type = "PackagePublish/2.0.0"}
+                new ServiceIndexResource(){ Id = baseUrl + "/query", Type = ServiceIndexResourceType.SearchQuery },
+                new ServiceIndexResource() { Id = baseUrl + "/registration/", Type = ServiceIndexResourceType.Registration },
+                new ServiceIndexResource() { Id = baseUrl + "/v3-flatcontainer/", Type = ServiceIndexResourceType.PackageBaseAddress, Comment = "Base URL of where NuGet packages are stored, in the format https://api.nuget.org/v3-flatcontainer/{id-lower}/{version-lower}/{id-lower}.{version-lower}.nupkg"},
+                new ServiceIndexResource(){ Id = baseUrl + "/api/v2", Type = ServiceIndexResourceType.Publish}
             };
             var serviceIndex = new ServiceIndex()
             {
@@ -27,7 +41,11 @@ namespace NuGetLite.Server
                 Resources = resources
             };
 
-            indexContent = JsonConvert.SerializeObject(serviceIndex);
+            var jsonSerializerSettings = new JsonSerializerSettings();
+            jsonSerializerSettings.TypeNameHandling = TypeNameHandling.None;
+            jsonSerializerSettings.ContractResolver = new Newtonsoft.Json.Serialization.CamelCasePropertyNamesContractResolver();
+
+            indexContent = JsonConvert.SerializeObject(serviceIndex, jsonSerializerSettings);
             app.Map("/v3/index.json", HandleIndexJsonPath);
         }
 
@@ -38,32 +56,6 @@ namespace NuGetLite.Server
                 context.Response.StatusCode = 200;
                 await context.Response.WriteAsync(indexContent);
             });
-        }
-
-        public class ServiceIndex
-        {
-            /// <summary>
-            /// Gets or sets the service index version
-            /// </summary>
-            public string Version
-            { get; set; }
-
-            public IEnumerable<ServiceIndexResource> Resources
-            { get; set; }
-        }
-
-        public class ServiceIndexResource
-        {
-            [JsonProperty(propertyName: "@id")]
-            public string Id
-            { get; set; }
-
-            [JsonProperty(propertyName: "@type")]
-            public string Type
-            { get; set; }
-
-            public string Comment
-            { get; set; }
         }
     }
 }
