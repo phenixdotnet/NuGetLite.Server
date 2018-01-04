@@ -10,6 +10,14 @@ namespace NuGetLite.Server.Core
     {
         private readonly string storageBasePath;
 
+        /// <summary>
+        /// Initializes a new instance of the <see cref="FilePersistentStorage"/> class
+        /// </summary>
+        public FilePersistentStorage()
+        {
+            this.storageBasePath = Path.GetFullPath("./packages");
+        }
+        
         public async Task WriteContent(string name, Stream stream)
         {
             if (string.IsNullOrEmpty(name))
@@ -18,20 +26,26 @@ namespace NuGetLite.Server.Core
                 throw new ArgumentNullException(nameof(stream));
 
 
-            string directory = this.GetFullPathFromFile(name);
+            string filePath = this.GetFullPathFromFile(name);
+            string directory = Path.GetDirectoryName(filePath);
             if (!Directory.Exists(directory))
             {
                 Directory.CreateDirectory(directory);
             }
 
-            using (FileStream fs = new FileStream(directory, FileMode.Create))
+            if (stream.CanSeek)
+                stream.Seek(0, SeekOrigin.Begin);
+
+            using (FileStream fs = new FileStream(filePath, FileMode.Create))
             {
                 int countRead = 0;
                 byte[] buffer = new byte[2048];
-                while ((countRead = await stream.ReadAsync(buffer, 0, buffer.Length)) == buffer.Length)
+                do
                 {
-                    await fs.WriteAsync(buffer, 0, countRead);
+                    countRead = await stream.ReadAsync(buffer, 0, buffer.Length);
+                    await fs.WriteAsync(buffer, 0, countRead).ConfigureAwait(false);
                 }
+                while (countRead == buffer.Length);
             }
         }
 
@@ -43,7 +57,9 @@ namespace NuGetLite.Server.Core
             if (!directory.StartsWith(this.storageBasePath))
                 throw new Exception();
 
-            return directory;
+            string fileName = Path.GetFileName(name);
+
+            return Path.Combine(directory, fileName);
         }
     }
 }

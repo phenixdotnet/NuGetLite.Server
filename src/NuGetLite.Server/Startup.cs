@@ -1,13 +1,8 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
-using Microsoft.AspNetCore.Builder;
+﻿using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
+using NuGetLite.Server.Core;
 
 namespace NuGetLite.Server
 {
@@ -24,6 +19,8 @@ namespace NuGetLite.Server
         public void ConfigureServices(IServiceCollection services)
         {
             services.AddMvc();
+
+            this.AddDependencies(services);
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
@@ -36,6 +33,12 @@ namespace NuGetLite.Server
 
             app.UseMvc();
             app.UseNuGetServiceIndex();
+        }
+
+        private void AddDependencies(IServiceCollection services)
+        {
+            services.AddSingleton<IPersistentStorage, FilePersistentStorage>();
+            services.AddSingleton<NuGetPackageManager>();
         }
     }
 }

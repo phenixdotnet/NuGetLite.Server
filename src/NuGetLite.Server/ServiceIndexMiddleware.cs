@@ -26,11 +26,13 @@ namespace NuGetLite.Server
                 throw new ArgumentNullException(nameof(app));
 
             //var serverAddressesFeature = app.ServerFeatures.Get<IServerAddressesFeature>();
-            string baseUrl = "http://localhost:55981";
+            string baseUrl = "http://localhost:55983";
 
             var resources = new ServiceIndexResource[]
             {
                 new ServiceIndexResource(){ Id = baseUrl + "/query", Type = ServiceIndexResourceType.SearchQuery },
+                new ServiceIndexResource(){ Id = baseUrl + "/query", Type = "SearchQueryService/3.0.0-beta" },
+                new ServiceIndexResource(){ Id = baseUrl + "/query", Type = "SearchQueryService/3.0.0-rc" },
                 new ServiceIndexResource() { Id = baseUrl + "/registration/", Type = ServiceIndexResourceType.Registration },
                 new ServiceIndexResource() { Id = baseUrl + "/v3-flatcontainer/", Type = ServiceIndexResourceType.PackageBaseAddress, Comment = "Base URL of where NuGet packages are stored, in the format https://api.nuget.org/v3-flatcontainer/{id-lower}/{version-lower}/{id-lower}.{version-lower}.nupkg"},
                 new ServiceIndexResource(){ Id = baseUrl + "/api/v2", Type = ServiceIndexResourceType.Publish}
@@ -53,6 +55,8 @@ namespace NuGetLite.Server
         {
             app.Run(async context =>
             {
+                Console.WriteLine("Called /v3/index.json");
+
                 context.Response.StatusCode = 200;
                 await context.Response.WriteAsync(indexContent);
             });
