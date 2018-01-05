@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using NuGetLite.Server.Core;
+using NuGetLite.Server.Models;
 
 namespace NuGetLite.Server
 {
@@ -37,8 +38,30 @@ namespace NuGetLite.Server
 
         private void AddDependencies(IServiceCollection services)
         {
+            services.AddSingleton<ServiceIndex>(CreateServiceIndex());
             services.AddSingleton<IPersistentStorage, FilePersistentStorage>();
+            services.AddSingleton<INuGetPackageIndex, InMemoryNuGetPackageIndex>();
             services.AddSingleton<NuGetPackageManager>();
+        }
+
+        private ServiceIndex CreateServiceIndex()
+        {
+            string baseUrl = "http://localhost:55983";
+
+            var resources = new ServiceIndexResource[]
+            {
+                new ServiceIndexResource(){ Id = baseUrl + "/query", Type = ServiceIndexResourceType.SearchQueryService },
+                new ServiceIndexResource() { Id = baseUrl + "/registration/", Type = ServiceIndexResourceType.RegistrationBaseUrl },
+                new ServiceIndexResource() { Id = baseUrl + "/v3-flatcontainer/", Type = ServiceIndexResourceType.PackageBaseAddress, Comment = "Base URL of where NuGet packages are stored, in the format https://api.nuget.org/v3-flatcontainer/{id-lower}/{version-lower}/{id-lower}.{version-lower}.nupkg"},
+                new ServiceIndexResource(){ Id = baseUrl + "/api/v2", Type = ServiceIndexResourceType.PackagePublish}
+            };
+            var serviceIndex = new ServiceIndex()
+            {
+                Version = "3.0.0-beta.1",
+                Resources = resources
+            };
+
+            return serviceIndex;
         }
     }
 }

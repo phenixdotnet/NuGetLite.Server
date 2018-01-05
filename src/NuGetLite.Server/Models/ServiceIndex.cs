@@ -58,21 +58,21 @@ namespace NuGetLite.Server.Models
         /// <summary>
         /// The search query service type
         /// </summary>
-        public const string SearchQuery = "SearchQueryService";
+        public const string SearchQueryService = "SearchQueryService/3.4.0";
 
         /// <summary>
         /// The registration type
         /// </summary>
-        public const string Registration = "RegistrationsBaseUrl";
+        public const string RegistrationBaseUrl = "RegistrationsBaseUrl/3.4.0";
 
         /// <summary>
-        /// 
+        /// The package base address type
         /// </summary>
         public const string PackageBaseAddress = "PackageBaseAddress/3.0.0";
 
         /// <summary>
         /// The publish type
         /// </summary>
-        public const string Publish = "PackagePublish/2.0.0";
+        public const string PackagePublish = "PackagePublish/2.0.0";
     }
 }
