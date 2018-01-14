@@ -1,7 +1,9 @@
-﻿using NuGet.Packaging.Core;
+﻿using Newtonsoft.Json;
+using NuGet.Packaging.Core;
 using NuGetLite.Server.Models;
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Linq.Expressions;
 using System.Threading.Tasks;
@@ -10,31 +12,37 @@ namespace NuGetLite.Server.Core
 {
     public class InMemoryNuGetPackageIndex : INuGetPackageIndex
     {
-        private readonly HashSet<NuGetPackageSummary> packages;
+        private readonly HashSet<RegistrationResult> packages;
         private readonly ServiceIndex serviceIndex;
         private readonly string registrationServiceUrl;
+        private readonly IPersistentStorage persistentStorage;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="InMemoryNuGetPackageIndex"/> class
         /// </summary>
         /// <param name="serviceIndex">The service index instance to be used</param>
-        public InMemoryNuGetPackageIndex(ServiceIndex serviceIndex)
+        /// <param name="persistentStorage">The persistent storage instance to be used</param>
+        public InMemoryNuGetPackageIndex(ServiceIndex serviceIndex, IPersistentStorage persistentStorage)
         {
             if (serviceIndex == null)
                 throw new ArgumentNullException(nameof(serviceIndex));
+            if (persistentStorage == null)
+                throw new ArgumentNullException(nameof(persistentStorage));
 
-            this.packages = new HashSet<NuGetPackageSummary>();
+            this.persistentStorage = persistentStorage;
+            this.packages = new HashSet<RegistrationResult>();
             this.serviceIndex = serviceIndex;
             this.registrationServiceUrl = serviceIndex.Resources.First(r => r.Type == ServiceIndexResourceType.RegistrationBaseUrl).Id;
         }
 
-        public Task IndexPackage(INuspecCoreReader nuspecReader)
+        public Task<NuGetPackageSummary> IndexPackage(INuspecCoreReader nuspecReader)
         {
             if (nuspecReader == null)
                 throw new ArgumentNullException(nameof(nuspecReader));
 
             var metadata = nuspecReader.GetMetadata();
 
+            string version = nuspecReader.GetVersion().ToNormalizedString();
             var packageSummary = new NuGetPackageSummary()
             {
                 PackageMetadataUrl = registrationServiceUrl + nuspecReader.GetId() + "/index.json",
@@ -42,7 +50,7 @@ namespace NuGetLite.Server.Core
                 Version = nuspecReader.GetVersion().ToFullString(),
                 Versions = new NuGetPackageVersion[]
                    {
-                       new NuGetPackageVersion(){ PackageMetadataUrl = registrationServiceUrl + nuspecReader.GetId() + "/" + nuspecReader.GetVersion().ToNormalizedString(), Version = nuspecReader.GetVersion().ToFullString(), Downloads = 0}
+                       new NuGetPackageVersion(){ PackageMetadataUrl = registrationServiceUrl + nuspecReader.GetId() + "/" + version, Version = nuspecReader.GetVersion().ToFullString(), Downloads = 0}
                    }
             };
 
@@ -55,16 +63,30 @@ namespace NuGetLite.Server.Core
                     packageSummary.Tags = m.Value;
             }
 
-            this.packages.Add(packageSummary);
+            var registrationPage = new RegistrationPage()
+            {
+                Id = $"{registrationServiceUrl + nuspecReader.GetId()}#page/{version}/{version}",
+                Count = registrationLeave.Count,
+            };
 
-            return Task.CompletedTask;
+            var registrationIndex = new RegistrationResult()
+            {
+                Count = 1,
+                Items = new RegistrationPage[1]
+                {
+                    registrationPage
+                }
+            };
+
+            this.packages.Add(registrationIndex);
+
+
+            return Task.FromResult(packageSummary);
         }
 
         public Task<int> Count(string query, bool includePrerelease)
         {
-            int count = 0;
-
-            count = (from p in this.packages where PackageMatchQuery(query, includePrerelease, p) select p).Count();
+            int count = (from p in this.packages where PackageMatchQuery(query, includePrerelease, p) select p).Count();
 
             return Task.FromResult(count);
         }

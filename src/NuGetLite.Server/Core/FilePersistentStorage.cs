@@ -26,7 +26,7 @@ namespace NuGetLite.Server.Core
                 throw new ArgumentNullException(nameof(stream));
 
 
-            string filePath = this.GetFullPathFromFile(name);
+            string filePath = this.GetFullPathFromFile(name).ToLowerInvariant();
             string directory = Path.GetDirectoryName(filePath);
             if (!Directory.Exists(directory))
             {

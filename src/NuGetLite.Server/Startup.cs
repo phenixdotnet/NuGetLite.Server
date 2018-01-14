@@ -4,6 +4,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using NuGetLite.Server.Core;
 using NuGetLite.Server.Models;
+using System.IO;
 
 namespace NuGetLite.Server
 {
@@ -34,6 +35,21 @@ namespace NuGetLite.Server
 
             app.UseMvc();
             app.UseNuGetServiceIndex();
+
+            // Add package registration resource as StaticFile
+            app.UseStaticFiles(new StaticFileOptions()
+            {
+                RequestPath = "/registration",
+                FileProvider = new Microsoft.Extensions.FileProviders.PhysicalFileProvider(Path.GetFullPath("./metadata"))
+            });
+
+            // Add package base resource handler as StaticFile
+            app.UseStaticFiles(new StaticFileOptions()
+            {
+                RequestPath = "/v3-flatcontainer",
+                FileProvider = new Microsoft.Extensions.FileProviders.PhysicalFileProvider(Path.GetFullPath("./packages")),
+                ContentTypeProvider = new NuGetContentTypeProvider() // We serve .json, .nuspec and .nupkg files
+            });
         }
 
         private void AddDependencies(IServiceCollection services)
