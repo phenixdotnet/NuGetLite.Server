@@ -25,7 +25,6 @@ namespace NuGetLite.Server
             if (app == null)
                 throw new ArgumentNullException(nameof(app));
 
-            //var serverAddressesFeature = app.ServerFeatures.Get<IServerAddressesFeature>();
             var serviceIndex = app.ApplicationServices.GetService<ServiceIndex>();
 
             var jsonSerializerSettings = new JsonSerializerSettings();

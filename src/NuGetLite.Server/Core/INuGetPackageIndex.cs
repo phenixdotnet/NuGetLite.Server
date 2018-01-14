@@ -15,7 +15,7 @@ namespace NuGetLite.Server.Core
         /// </summary>
         /// <param name="nuspecReader">The nuspec reader instance to be used to read metadata</param>
         /// <returns></returns>
-        Task IndexPackage(INuspecCoreReader nuspecReader);
+        Task<NuGetPackageSummary> IndexPackage(INuspecCoreReader nuspecReader);
 
         /// <summary>
         /// Gets count packages match the <paramref name="query"/>
