@@ -46,7 +46,7 @@ namespace NuGetLite.Server
 
         private ServiceIndex CreateServiceIndex()
         {
-            string baseUrl = "http://localhost:55983";
+            string baseUrl = "http://localhost:49869";
 
             var resources = new ServiceIndexResource[]
             {
