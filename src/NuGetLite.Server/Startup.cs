@@ -37,17 +37,23 @@ namespace NuGetLite.Server
             app.UseNuGetServiceIndex();
 
             // Add package registration resource as StaticFile
+            string metadataDir = Path.GetFullPath("./metadata");
+            if (!Directory.Exists(metadataDir))
+                Directory.CreateDirectory(metadataDir);
             app.UseStaticFiles(new StaticFileOptions()
             {
                 RequestPath = "/registration",
-                FileProvider = new Microsoft.Extensions.FileProviders.PhysicalFileProvider(Path.GetFullPath("./metadata"))
+                FileProvider = new Microsoft.Extensions.FileProviders.PhysicalFileProvider(metadataDir)
             });
 
             // Add package base resource handler as StaticFile
+            string packagesDir = Path.GetFullPath("./packages");
+            if (!Directory.Exists(packagesDir))
+                Directory.CreateDirectory(packagesDir);
             app.UseStaticFiles(new StaticFileOptions()
             {
                 RequestPath = "/v3-flatcontainer",
-                FileProvider = new Microsoft.Extensions.FileProviders.PhysicalFileProvider(Path.GetFullPath("./packages")),
+                FileProvider = new Microsoft.Extensions.FileProviders.PhysicalFileProvider(packagesDir),
                 ContentTypeProvider = new NuGetContentTypeProvider() // We serve .json, .nuspec and .nupkg files
             });
         }

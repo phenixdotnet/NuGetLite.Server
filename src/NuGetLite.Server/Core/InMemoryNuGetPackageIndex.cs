@@ -15,6 +15,7 @@ namespace NuGetLite.Server.Core
         private readonly HashSet<RegistrationResult> packages;
         private readonly ServiceIndex serviceIndex;
         private readonly string registrationServiceUrl;
+        private readonly string packageContentServiceUrl;
         private readonly IPersistentStorage persistentStorage;
 
         /// <summary>
@@ -33,9 +34,10 @@ namespace NuGetLite.Server.Core
             this.packages = new HashSet<RegistrationResult>();
             this.serviceIndex = serviceIndex;
             this.registrationServiceUrl = serviceIndex.Resources.First(r => r.Type == ServiceIndexResourceType.RegistrationBaseUrl).Id;
+            this.packageContentServiceUrl = serviceIndex.Resources.First(r => r.Type == ServiceIndexResourceType.PackageBaseAddress).Id;
         }
 
-        public Task<NuGetPackageSummary> IndexPackage(INuspecCoreReader nuspecReader)
+        public Task<RegistrationResult> IndexPackage(INuspecCoreReader nuspecReader)
         {
             if (nuspecReader == null)
                 throw new ArgumentNullException(nameof(nuspecReader));
@@ -63,10 +65,15 @@ namespace NuGetLite.Server.Core
                     packageSummary.Tags = m.Value;
             }
 
+            RegistrationLeaf registrationLeaf = new RegistrationLeaf();
+            registrationLeaf.CatalogEntry = packageSummary;
+            registrationLeaf.PackageContent = this.packageContentServiceUrl + nuspecReader.GetId() + "/" + version;
+
             var registrationPage = new RegistrationPage()
             {
                 Id = $"{registrationServiceUrl + nuspecReader.GetId()}#page/{version}/{version}",
-                Count = registrationLeave.Count,
+                Count = 1,
+                Items = new RegistrationLeaf[] { registrationLeaf }
             };
 
             var registrationIndex = new RegistrationResult()
@@ -81,19 +88,27 @@ namespace NuGetLite.Server.Core
             this.packages.Add(registrationIndex);
 
 
-            return Task.FromResult(packageSummary);
+            return Task.FromResult(registrationIndex);
         }
 
         public Task<int> Count(string query, bool includePrerelease)
         {
-            int count = (from p in this.packages where PackageMatchQuery(query, includePrerelease, p) select p).Count();
+            int count = (from r in this.packages
+                         from p in r.Items
+                         from l in p.Items
+                         where PackageMatchQuery(query, includePrerelease, l.CatalogEntry)
+                         select l.CatalogEntry).Count();
 
             return Task.FromResult(count);
         }
 
         public Task<IEnumerable<NuGetPackageSummary>> SearchPackages(string query, int skip, int take, bool includePrerelease)
         {
-            var results = (from p in this.packages where PackageMatchQuery(query, includePrerelease, p) select p).Skip(skip).Take(take);
+            var results = (from r in this.packages
+                           from p in r.Items
+                           from l in p.Items
+                           where PackageMatchQuery(query, includePrerelease, l.CatalogEntry)
+                           select l.CatalogEntry).Skip(skip).Take(take);
 
             return Task.FromResult(results);
         }

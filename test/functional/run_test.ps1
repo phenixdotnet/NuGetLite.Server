@@ -13,3 +13,12 @@ Invoke-WebRequest -UseBasicParsing "http://localhost:55983/v3-flatcontainer/newt
 
 Write-Host "Downloading package Newtonsoft.json 10.0.3"
 Invoke-WebRequest -UseBasicParsing "http://localhost:55983/v3-flatcontainer/newtonsoft.json/10.0.3/newtonsoft.json.10.0.3.nupkg" -OutFile "Newtonsoft.Json.10.0.3.nupkg"
+
+
+mkdir TestApp
+Push-Location "TestApp"
+dotnet new console
+
+..\nuget.exe install Newtonsoft.Json -Source debug -ConfigFile ..\NuGet.Config -Verbosity detailed
+
+Pop-Location

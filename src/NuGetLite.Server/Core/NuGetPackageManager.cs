@@ -12,22 +12,27 @@ namespace NuGetLite.Server.Core
     /// </summary>
     public class NuGetPackageManager
     {
-        private readonly IPersistentStorage persistentStorage;
+        private readonly IPersistentStorage packagesPersistentStorage;
+        private readonly IPersistentStorage metadataPersistentStorage;
         private readonly INuGetPackageIndex packageIndex;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="NuGetPackageManager"/> class
         /// </summary>
-        /// <param name="persistentStorage">The persistent storage instance to be used</param>
+        /// <param name="packagesPersistentStorage">The persistent storage instance to be used for packages files</param>
+        /// <param name="metadataPersistentStorage">The persistent storage instance to be used for metadata files</param>
         /// <param name="packageIndex">The package index instance to be used</param>
-        public NuGetPackageManager(IPersistentStorage persistentStorage, INuGetPackageIndex packageIndex)
+        public NuGetPackageManager(IPersistentStorage packagesPersistentStorage, IPersistentStorage metadataPersistentStorage, INuGetPackageIndex packageIndex)
         {
-            if (persistentStorage == null)
-                throw new ArgumentNullException(nameof(persistentStorage));
+            if (packagesPersistentStorage == null)
+                throw new ArgumentNullException(nameof(packagesPersistentStorage));
+            if (metadataPersistentStorage == null)
+                throw new ArgumentNullException(nameof(metadataPersistentStorage));
             if (packageIndex == null)
                 throw new ArgumentNullException(nameof(packageIndex));
 
-            this.persistentStorage = persistentStorage;
+            this.packagesPersistentStorage = packagesPersistentStorage;
+            this.metadataPersistentStorage = metadataPersistentStorage;
             this.packageIndex = packageIndex;
         }
 
@@ -55,17 +60,20 @@ namespace NuGetLite.Server.Core
                 var version = packageArchiveReader.NuspecReader.GetVersion().ToNormalizedString();
 
                 // Write the nupkg file
-                await this.persistentStorage.WriteContent($"{packageName}/{version}/{packageName}.{version}.nupkg", stream).ConfigureAwait(false);
+                await this.packagesPersistentStorage.WriteContent($"{packageName}/{version}/{packageName}.{version}.nupkg", stream).ConfigureAwait(false);
 
                 // Write the nuspec file extracted from the nupkg
                 var nuspecStream = packageArchiveReader.GetNuspec();
-                await this.persistentStorage.WriteContent($"{packageName}/{version}/{packageName}.nuspec", nuspecStream).ConfigureAwait(false);
-                
+                await this.packagesPersistentStorage.WriteContent($"{packageName}/{version}/{packageName}.nuspec", nuspecStream).ConfigureAwait(false);
+
                 // Index package
-                var packageSummary = await this.packageIndex.IndexPackage(packageArchiveReader.NuspecReader).ConfigureAwait(false);
+                var packageRegistrationResult = await this.packageIndex.IndexPackage(packageArchiveReader.NuspecReader).ConfigureAwait(false);
+
+                // Write the registration index.json file
+                await this.PublishRegistrationIndexFile(packageRegistrationResult).ConfigureAwait(false);
 
                 // Write the version index.json file
-                await this.PublishVersionIndexFile(packageSummary).ConfigureAwait(false);
+                await this.PublishVersionIndexFile(packageRegistrationResult.Items.First().Items.First().CatalogEntry).ConfigureAwait(false);
             }
         }
 
@@ -89,7 +97,24 @@ namespace NuGetLite.Server.Core
                 sw.Flush();
 
                 ms.Seek(0, SeekOrigin.Begin);
-                await persistentStorage.WriteContent(versionIndexFilePath, ms).ConfigureAwait(false);
+                await packagesPersistentStorage.WriteContent(versionIndexFilePath, ms).ConfigureAwait(false);
+            }
+        }
+
+        private async Task PublishRegistrationIndexFile(RegistrationResult registrationResult)
+        {
+            var jsonSerializer = Newtonsoft.Json.JsonSerializer.Create();
+            using (MemoryStream ms = new MemoryStream())
+            using (StreamWriter sw = new StreamWriter(ms))
+            using (JsonWriter jsonWriter = new JsonTextWriter(sw))
+            {
+                jsonSerializer.Serialize(jsonWriter, registrationResult);
+
+                jsonWriter.Flush();
+                sw.Flush();
+
+                ms.Seek(0, SeekOrigin.Begin);
+                await this.metadataPersistentStorage.WriteContent($"{registrationResult.Items.First().Id}/index.json", ms).ConfigureAwait(false);
             }
         }
     }
