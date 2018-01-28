@@ -289,4 +289,6 @@ __pycache__/
 *.odx.cs
 *.xsd.cs
 /test/functional/TestApp
-/test/functional/Newtonsoft.Json.10.0.3.nuspec
+/test/functional/*.nuspec
+/test/functional/*.nupkg
+/src/NuGetLite.Server/metadata

@@ -17,17 +17,39 @@ namespace NuGetLite.Server.Core
         public string Id
         { get; set; }
 
+        public string Title
+        { get; set; }
+
+        public string Description
+        { get; set; }
+
+        public string LicenseUrl
+        { get; set; }
+
+        public string ProjectUrl
+        { get; set; }
+
+        public bool RequireLicenseAcceptance
+        { get; set; }
+
+        public string IconUrl
+        { get; set; }
+
+        public string Copyright
+        { get; set; }
+
+        public IEnumerable<string> Owners
+        { get; set; }
+
+        public IEnumerable<string> Authors
+        { get; set; }
+
         public string Version
         { get; set; }
 
         public IEnumerable<NuGetPackageVersion> Versions
         { get; set; }
 
-        public string Description
-        { get; set; }
-
-        public IEnumerable<string> Authors
-        { get; set; }
 
         public bool IsPrerelease
         { get; set; }

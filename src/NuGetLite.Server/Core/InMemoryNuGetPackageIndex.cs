@@ -22,15 +22,11 @@ namespace NuGetLite.Server.Core
         /// Initializes a new instance of the <see cref="InMemoryNuGetPackageIndex"/> class
         /// </summary>
         /// <param name="serviceIndex">The service index instance to be used</param>
-        /// <param name="persistentStorage">The persistent storage instance to be used</param>
-        public InMemoryNuGetPackageIndex(ServiceIndex serviceIndex, IPersistentStorage persistentStorage)
+        public InMemoryNuGetPackageIndex(ServiceIndex serviceIndex)
         {
             if (serviceIndex == null)
                 throw new ArgumentNullException(nameof(serviceIndex));
-            if (persistentStorage == null)
-                throw new ArgumentNullException(nameof(persistentStorage));
-
-            this.persistentStorage = persistentStorage;
+                        
             this.packages = new HashSet<RegistrationResult>();
             this.serviceIndex = serviceIndex;
             this.registrationServiceUrl = serviceIndex.Resources.First(r => r.Type == ServiceIndexResourceType.RegistrationBaseUrl).Id;
@@ -58,22 +54,39 @@ namespace NuGetLite.Server.Core
 
             foreach (var m in metadata)
             {
-                if ("authors".Equals(m.Key, StringComparison.InvariantCultureIgnoreCase) && !string.IsNullOrEmpty(m.Value))
+                if ("title".Equals(m.Key, StringComparison.InvariantCultureIgnoreCase))
+                    packageSummary.Title = m.Value;
+                else if ("description".Equals(m.Key, StringComparison.InvariantCultureIgnoreCase))
+                    packageSummary.Description = m.Value;
+                else if ("authors".Equals(m.Key, StringComparison.InvariantCultureIgnoreCase) && !string.IsNullOrEmpty(m.Value))
                     packageSummary.Authors = m.Value.Split(",");
-
-                if ("tags".Equals(m.Key, StringComparison.InvariantCultureIgnoreCase))
+                else if ("owners".Equals(m.Key, StringComparison.InvariantCultureIgnoreCase) && !string.IsNullOrEmpty(m.Value))
+                    packageSummary.Owners = m.Value.Split(",");
+                else if ("requireLicenseAcceptance".Equals(m.Key, StringComparison.InvariantCultureIgnoreCase))
+                    packageSummary.RequireLicenseAcceptance = bool.Parse(m.Value);
+                else if ("licenseUrl".Equals(m.Key, StringComparison.InvariantCultureIgnoreCase))
+                    packageSummary.LicenseUrl = m.Value;
+                else if ("projectUrl".Equals(m.Key, StringComparison.InvariantCultureIgnoreCase))
+                    packageSummary.ProjectUrl = m.Value;
+                else if ("iconUrl".Equals(m.Key, StringComparison.InvariantCultureIgnoreCase))
+                    packageSummary.IconUrl = m.Value;
+                else if ("copyright".Equals(m.Key, StringComparison.InvariantCultureIgnoreCase))
+                    packageSummary.Copyright = m.Value;
+                else if ("tags".Equals(m.Key, StringComparison.InvariantCultureIgnoreCase))
                     packageSummary.Tags = m.Value;
             }
 
             RegistrationLeaf registrationLeaf = new RegistrationLeaf();
             registrationLeaf.CatalogEntry = packageSummary;
-            registrationLeaf.PackageContent = this.packageContentServiceUrl + nuspecReader.GetId() + "/" + version;
+            registrationLeaf.PackageContent = $"{this.packageContentServiceUrl}{nuspecReader.GetId()}/{version}/{nuspecReader.GetId()}.nupkg";
 
             var registrationPage = new RegistrationPage()
             {
-                Id = $"{registrationServiceUrl + nuspecReader.GetId()}#page/{version}/{version}",
+                Id = $"{registrationServiceUrl + nuspecReader.GetId()}/index.json/#page/{version}/{version}",
                 Count = 1,
-                Items = new RegistrationLeaf[] { registrationLeaf }
+                Items = new RegistrationLeaf[] { registrationLeaf },
+                Lower = packageSummary.Versions.First().Version,
+                Upper = packageSummary.Versions.Last().Version
             };
 
             var registrationIndex = new RegistrationResult()

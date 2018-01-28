@@ -13,9 +13,10 @@ namespace NuGetLite.Server.Core
         /// <summary>
         /// Initializes a new instance of the <see cref="FilePersistentStorage"/> class
         /// </summary>
-        public FilePersistentStorage()
+        /// <param name="basePath">The physical base path to be used</param>
+        public FilePersistentStorage(string basePath)
         {
-            this.storageBasePath = Path.GetFullPath("./packages");
+            this.storageBasePath = Path.GetFullPath(basePath);
         }
         
         public async Task WriteContent(string name, Stream stream)

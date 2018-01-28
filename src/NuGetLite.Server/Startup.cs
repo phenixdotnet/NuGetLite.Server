@@ -61,9 +61,12 @@ namespace NuGetLite.Server
         private void AddDependencies(IServiceCollection services)
         {
             services.AddSingleton<ServiceIndex>(CreateServiceIndex());
-            services.AddSingleton<IPersistentStorage, FilePersistentStorage>();
             services.AddSingleton<INuGetPackageIndex, InMemoryNuGetPackageIndex>();
-            services.AddSingleton<NuGetPackageManager>();
+            services.AddSingleton<NuGetPackageManager>(serviceProvider =>
+            {
+                var packageIndex = serviceProvider.GetService<INuGetPackageIndex>();
+                return new NuGetPackageManager(new FilePersistentStorage("./packages"), new FilePersistentStorage("./metadata"), packageIndex);
+            });
         }
 
         private ServiceIndex CreateServiceIndex()

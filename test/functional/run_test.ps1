@@ -17,7 +17,7 @@ Invoke-WebRequest -UseBasicParsing "http://localhost:55983/v3-flatcontainer/newt
 
 mkdir TestApp
 Push-Location "TestApp"
-dotnet new console
+dotnet new console --force
 
 ..\nuget.exe install Newtonsoft.Json -Source debug -ConfigFile ..\NuGet.Config -Verbosity detailed
 

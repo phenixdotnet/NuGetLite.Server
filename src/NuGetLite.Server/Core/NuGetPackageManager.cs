@@ -12,6 +12,13 @@ namespace NuGetLite.Server.Core
     /// </summary>
     public class NuGetPackageManager
     {
+        private static readonly JsonSerializerSettings jsonSerializerSettings = new JsonSerializerSettings()
+        {
+            Formatting = Formatting.Indented,
+            TypeNameHandling = TypeNameHandling.None,
+            ContractResolver = new Newtonsoft.Json.Serialization.CamelCasePropertyNamesContractResolver()
+        };
+
         private readonly IPersistentStorage packagesPersistentStorage;
         private readonly IPersistentStorage metadataPersistentStorage;
         private readonly INuGetPackageIndex packageIndex;
@@ -70,7 +77,7 @@ namespace NuGetLite.Server.Core
                 var packageRegistrationResult = await this.packageIndex.IndexPackage(packageArchiveReader.NuspecReader).ConfigureAwait(false);
 
                 // Write the registration index.json file
-                await this.PublishRegistrationIndexFile(packageRegistrationResult).ConfigureAwait(false);
+                await this.PublishRegistrationIndexFile(packageName, packageRegistrationResult).ConfigureAwait(false);
 
                 // Write the version index.json file
                 await this.PublishVersionIndexFile(packageRegistrationResult.Items.First().Items.First().CatalogEntry).ConfigureAwait(false);
@@ -80,7 +87,7 @@ namespace NuGetLite.Server.Core
         private async Task PublishVersionIndexFile(NuGetPackageSummary packageSummary)
         {
             var versionIndexFilePath = $"{packageSummary.Id}/index.json";
-            var jsonSerializer = Newtonsoft.Json.JsonSerializer.Create();
+            var jsonSerializer = JsonSerializer.Create(jsonSerializerSettings);
 
             var versions = new
             {
@@ -101,9 +108,10 @@ namespace NuGetLite.Server.Core
             }
         }
 
-        private async Task PublishRegistrationIndexFile(RegistrationResult registrationResult)
+        private async Task PublishRegistrationIndexFile(string packageName, RegistrationResult registrationResult)
         {
-            var jsonSerializer = Newtonsoft.Json.JsonSerializer.Create();
+            var jsonSerializer = JsonSerializer.Create(jsonSerializerSettings);
+
             using (MemoryStream ms = new MemoryStream())
             using (StreamWriter sw = new StreamWriter(ms))
             using (JsonWriter jsonWriter = new JsonTextWriter(sw))
@@ -114,7 +122,7 @@ namespace NuGetLite.Server.Core
                 sw.Flush();
 
                 ms.Seek(0, SeekOrigin.Begin);
-                await this.metadataPersistentStorage.WriteContent($"{registrationResult.Items.First().Id}/index.json", ms).ConfigureAwait(false);
+                await this.metadataPersistentStorage.WriteContent($"{packageName}/index.json", ms).ConfigureAwait(false);
             }
         }
     }
