@@ -11,3 +11,7 @@ build_script:
   # dotnet info
   - ps: dotnet restore NuGetLite.Server.sln
   - ps: dotnet build NuGetLite.Server.sln
+
+after_test:
+  - ps: Push-Location test\functional
+  - ps: .\run_test.ps1

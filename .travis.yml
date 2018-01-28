@@ -2,6 +2,7 @@ sudo: required
 services:
   - docker
 
+ 
 language: csharp
 dotnet: 2.1.4
 mono: none
@@ -13,6 +14,17 @@ before_install:
   - sudo apt-get update
   - sudo apt-get -y install docker-ce
 
-script:
- - dotnet restore NuGetLite.Server.sln
- - dotnet build NuGetLite.Server.sln
+stages:
+    - test
+  - name: build_docker_image
+    if: tag is present
+
+ jobs:
+  include:
+    - stage: test
+      script: dotnet restore NuGetLite.Server.sln
+      script: dotnet build NuGetLite.Server.sln
+      script: cd test/functional
+    - stage: build_docker_image
+      script: cd src/NuGetLite.Server
+      script: docker build .
