@@ -26,7 +26,7 @@ namespace NuGetLite.Server.Core
         {
             if (serviceIndex == null)
                 throw new ArgumentNullException(nameof(serviceIndex));
-                        
+
             this.packages = new HashSet<RegistrationResult>();
             this.serviceIndex = serviceIndex;
             this.registrationServiceUrl = serviceIndex.Resources.First(r => r.Type == ServiceIndexResourceType.RegistrationBaseUrl).Id;
@@ -41,15 +41,37 @@ namespace NuGetLite.Server.Core
             var metadata = nuspecReader.GetMetadata();
 
             string version = nuspecReader.GetVersion().ToNormalizedString();
+            string packageRegistrationBaseUrl = $"{registrationServiceUrl + nuspecReader.GetId()}/index.json";
+
+            RegistrationResult registrationIndex = this.packages.FirstOrDefault(p => p.Id == packageRegistrationBaseUrl);
+
+            if (registrationIndex == null)
+            {
+                registrationIndex = new RegistrationResult()
+                {
+                    Id = packageRegistrationBaseUrl
+                };
+
+                this.packages.Add(registrationIndex);
+            }
+
+            RegistrationPage registrationPage = registrationIndex.Items.FirstOrDefault();
+            if (registrationPage == null)
+            {
+                registrationPage = new RegistrationPage();
+                registrationIndex.Items.Add(registrationPage);
+            }
+
+            var versions = registrationPage.Items.FirstOrDefault()?.CatalogEntry.Versions;
+            var existingVersions = versions == null ? new List<NuGetPackageVersion>() : new List<NuGetPackageVersion>(versions);
+            existingVersions.Add(new NuGetPackageVersion() { PackageMetadataUrl = registrationServiceUrl + nuspecReader.GetId() + "/" + version, Version = nuspecReader.GetVersion().ToFullString(), Downloads = 0 });
+
             var packageSummary = new NuGetPackageSummary()
             {
                 PackageMetadataUrl = registrationServiceUrl + nuspecReader.GetId() + "/index.json",
                 Id = nuspecReader.GetId(),
                 Version = nuspecReader.GetVersion().ToFullString(),
-                Versions = new NuGetPackageVersion[]
-                   {
-                       new NuGetPackageVersion(){ PackageMetadataUrl = registrationServiceUrl + nuspecReader.GetId() + "/" + version, Version = nuspecReader.GetVersion().ToFullString(), Downloads = 0}
-                   }
+                Versions = existingVersions
             };
 
             foreach (var m in metadata)
@@ -78,27 +100,15 @@ namespace NuGetLite.Server.Core
 
             RegistrationLeaf registrationLeaf = new RegistrationLeaf();
             registrationLeaf.CatalogEntry = packageSummary;
-            registrationLeaf.PackageContent = $"{this.packageContentServiceUrl}{nuspecReader.GetId()}/{version}/{nuspecReader.GetId()}.nupkg";
+            registrationLeaf.PackageContent = $"{this.packageContentServiceUrl}{nuspecReader.GetId()}/{version}/{nuspecReader.GetId()}.{version}.nupkg";
 
-            var registrationPage = new RegistrationPage()
-            {
-                Id = $"{registrationServiceUrl + nuspecReader.GetId()}/index.json/#page/{version}/{version}",
-                Count = 1,
-                Items = new RegistrationLeaf[] { registrationLeaf },
-                Lower = packageSummary.Versions.First().Version,
-                Upper = packageSummary.Versions.Last().Version
-            };
+            string lowerVersion = packageSummary.Versions.First().Version;
+            string upperVersion = packageSummary.Versions.Last().Version;
 
-            var registrationIndex = new RegistrationResult()
-            {
-                Count = 1,
-                Items = new RegistrationPage[1]
-                {
-                    registrationPage
-                }
-            };
-
-            this.packages.Add(registrationIndex);
+            registrationPage.Id = $"{registrationServiceUrl + nuspecReader.GetId()}/index.json/#page/{lowerVersion}/{upperVersion}";
+            registrationPage.Items.Add(registrationLeaf);
+            registrationPage.Lower = lowerVersion;
+            registrationPage.Upper = upperVersion;
 
 
             return Task.FromResult(registrationIndex);
@@ -135,6 +145,7 @@ namespace NuGetLite.Server.Core
                 return true;
 
             return package.Id.Contains(query.ToLower())
+                || (!string.IsNullOrEmpty(package.Title) && package.Title.Contains(query))
                 || (!string.IsNullOrEmpty(package.Description) && package.Description.Contains(query))
                 || (!string.IsNullOrEmpty(package.Tags) && package.Tags.Contains(query));
         }

@@ -1,0 +1,19 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>netstandard2.0</TargetFramework>
+	
+	<Authors>Vincent Lainé</Authors>
+    <Company>PhenixDotNet</Company>
+    <Description>Test package for NuGetServerLite</Description>
+    <Copyright>Apache 2.0</Copyright>
+    <PackageLicenseUrl>https://github.com/phenixdotnet/NuGetLite.Server/blob/master/LICENSE</PackageLicenseUrl>
+    <PackageProjectUrl>https://github.com/phenixdotnet/NuGetLite.Server/</PackageProjectUrl>
+    <PackageIconUrl></PackageIconUrl>
+    <RepositoryUrl>https://github.com/phenixdotnet/NuGetLite.Server/</RepositoryUrl>
+    <RepositoryType>GitHub</RepositoryType>
+    <PackageTags>NuGet Server, Docker, C#</PackageTags>
+    <PackageReleaseNotes>Test project</PackageReleaseNotes>
+  </PropertyGroup>
+
+</Project>

@@ -291,4 +291,7 @@ __pycache__/
 /test/functional/TestApp
 /test/functional/*.nuspec
 /test/functional/*.nupkg
+/test/functional/TestPackage
+
 /src/NuGetLite.Server/metadata
+/src/NuGetLite.Server/packages

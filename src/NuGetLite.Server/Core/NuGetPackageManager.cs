@@ -80,7 +80,7 @@ namespace NuGetLite.Server.Core
                 await this.PublishRegistrationIndexFile(packageName, packageRegistrationResult).ConfigureAwait(false);
 
                 // Write the version index.json file
-                await this.PublishVersionIndexFile(packageRegistrationResult.Items.First().Items.First().CatalogEntry).ConfigureAwait(false);
+                await this.PublishVersionIndexFile(packageRegistrationResult.Items.Last().Items.Last().CatalogEntry).ConfigureAwait(false);
             }
         }
 
