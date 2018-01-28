@@ -17,4 +17,5 @@ script:
  - dotnet restore NuGetLite.Server.sln
  - dotnet build NuGetLite.Server.sln
  - if [ -z "$TRAVIS_TAG" ]; then exit 0; fi
- - echo "deploy"
+ - cd src/NuGetLite.Server
+ - docker build -t nugetserverlite:$TRAVIS_TAG -t nugetserverlite:latest .
