@@ -15,16 +15,18 @@ before_install:
   - sudo apt-get -y install docker-ce
 
 stages:
-    - test
+  - test
   - name: build_docker_image
     if: tag is present
 
  jobs:
   include:
     - stage: test
+      dotnet: 2.1.4
       script: dotnet restore NuGetLite.Server.sln
       script: dotnet build NuGetLite.Server.sln
       script: cd test/functional
     - stage: build_docker_image
+      dotnet: 2.1.4
       script: cd src/NuGetLite.Server
       script: docker build .
