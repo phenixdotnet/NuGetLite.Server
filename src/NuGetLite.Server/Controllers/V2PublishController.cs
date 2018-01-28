@@ -42,12 +42,23 @@ namespace NuGetLite.Server.Controllers
             var form = await Request.ReadFormAsync();
             if (form == null || form.Files.Count != 1)
                 return this.StatusCode(500);
-            
-            using (MemoryStream ms = new MemoryStream())
-            {
-                await form.Files.First().CopyToAsync(ms);
 
-                await this.publishPackageManager.PublishPackage(ms);
+            try
+            {
+
+                using (MemoryStream ms = new MemoryStream())
+                {
+                    await form.Files.First().CopyToAsync(ms);
+                    await this.publishPackageManager.PublishPackage(ms);
+                }
+            }
+            catch (Core.PackageIndex.PackageVersionAlreadyExistsException pvaee)
+            {
+                return this.StatusCode(409, new { message = pvaee.Message });
+            }
+            catch(Exception)
+            {
+                throw;
             }
 
             return this.StatusCode(201);

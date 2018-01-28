@@ -1,0 +1,13 @@
+{
+  "profiles": {
+    "NuGetLite.Server": {
+      "commandName": "Project",
+      "environmentVariables": {
+        "ASPNETCORE_URLS": "http://+:55983",
+        "ASPNETCORE_ENVIRONMENT": "Development",
+        "PublicBaseUrl": "http://localhost:55983"
+      },
+      "applicationUrl": "http://localhost:55983/"
+    }
+  }
+}

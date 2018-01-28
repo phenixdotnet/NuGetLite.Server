@@ -1,32 +1,25 @@
-﻿using Newtonsoft.Json;
+﻿using Microsoft.Extensions.Logging;
 using NuGet.Packaging.Core;
 using NuGetLite.Server.Models;
 using System;
 using System.Collections.Generic;
-using System.IO;
 using System.Linq;
-using System.Linq.Expressions;
 using System.Threading.Tasks;
-using Microsoft.Extensions.Logging;
-using System.Diagnostics;
 
-namespace NuGetLite.Server.Core
+namespace NuGetLite.Server.Core.PackageIndex
 {
-    public class InMemoryNuGetPackageIndex : INuGetPackageIndex
+    public abstract class NuGetPackageIndexBase : INuGetPackageIndex
     {
-        private readonly ILogger<InMemoryNuGetPackageIndex> logger;
-
-        private readonly HashSet<RegistrationResult> packages;
-        private readonly ServiceIndex serviceIndex;
-        private readonly string registrationServiceUrl;
-        private readonly string packageContentServiceUrl;
+        private readonly ILogger<NuGetPackageIndexBase> logger;
+        protected readonly string registrationServiceUrl;
+        protected readonly string packageContentServiceUrl;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="InMemoryNuGetPackageIndex"/> class
         /// </summary>
         /// <param name="serviceIndex">The service index instance to be used</param>
         /// <param name="logger">The logger instance to be used</param>
-        public InMemoryNuGetPackageIndex(ServiceIndex serviceIndex, ILogger<InMemoryNuGetPackageIndex> logger)
+        protected NuGetPackageIndexBase(ServiceIndex serviceIndex, ILogger<NuGetPackageIndexBase> logger)
         {
             if (serviceIndex == null)
                 throw new ArgumentNullException(nameof(serviceIndex));
@@ -34,10 +27,17 @@ namespace NuGetLite.Server.Core
                 throw new ArgumentNullException(nameof(logger));
 
             this.logger = logger;
-            this.packages = new HashSet<RegistrationResult>();
-            this.serviceIndex = serviceIndex;
             this.registrationServiceUrl = serviceIndex.Resources.First(r => r.Type == ServiceIndexResourceType.RegistrationBaseUrl).Id;
             this.packageContentServiceUrl = serviceIndex.Resources.First(r => r.Type == ServiceIndexResourceType.PackageBaseAddress).Id;
+        }
+
+        /// <summary>
+        /// Initializes the package index
+        /// </summary>
+        /// <returns></returns>
+        public virtual Task Initialize()
+        {
+            return Task.CompletedTask;
         }
 
         /// <summary>
@@ -45,21 +45,38 @@ namespace NuGetLite.Server.Core
         /// </summary>
         /// <param name="nuspecReader">The nuspec reader instance to be used to read metadata</param>
         /// <returns>The <see cref="RegistrationResult"/> instance which correspond to the package</returns>
-        public Task<RegistrationResult> IndexPackage(INuspecCoreReader nuspecReader)
+        public abstract Task<RegistrationResult> IndexPackage(INuspecCoreReader nuspecReader);
+
+        /// <summary>
+        /// Gets count packages match the <paramref name="query"/>
+        /// </summary>
+        /// <param name="query">The query to be used to search the packages</param>
+        /// <param name="includePrerelease">A value indicating if the pre release packages should be included or not</param>
+        /// <returns></returns>
+        public abstract Task<int> Count(string query, bool includePrerelease);
+
+        /// <summary>
+        /// Return the package summary which match with the <paramref name="query"/>
+        /// </summary>
+        /// <param name="query">The query to be used to search the packages</param>
+        /// <param name="skip"></param>
+        /// <param name="take"></param>
+        /// <param name="includePrerelease">A value indicating if the pre release packages should be included or not</param>
+        /// <returns></returns>
+        public abstract Task<IEnumerable<NuGetPackageSummary>> SearchPackages(string query, int skip, int take, bool includePrerelease);
+
+        /// <summary>
+        /// Handle the logic to index a package from the <paramref name="nuspecReader"/> and store information in the <paramref name="registrationIndex"/> if provided or create a new entry
+        /// </summary>
+        /// <param name="nuspecReader">The nuspecReader to be used to read package information</param>
+        /// <param name="registrationIndex">The <see cref="RegistrationResult"/> instance which should be used to create new version if package id already exists</param>
+        /// <returns>The <paramref name="registrationIndex"/> instance of provided or a new one</returns>
+        protected virtual async Task<RegistrationResult> IndexPackageCore(INuspecCoreReader nuspecReader, RegistrationResult registrationIndex)
         {
-            if (nuspecReader == null)
-                throw new ArgumentNullException(nameof(nuspecReader));
-
-            var indexingStopwatch = Stopwatch.StartNew();
-
+            bool isNewPackageId = false;
             var metadata = nuspecReader.GetMetadata();
-
             string version = nuspecReader.GetVersion().ToNormalizedString();
             string packageRegistrationBaseUrl = $"{registrationServiceUrl + nuspecReader.GetId()}/index.json";
-
-            logger.LogDebug(LoggingEvents.PackageIndexIndexingPackage, "Indexing package {packageId}, version {version}", nuspecReader.GetId(), version);
-
-            RegistrationResult registrationIndex = this.packages.FirstOrDefault(p => p.Id == packageRegistrationBaseUrl);
 
             if (registrationIndex == null)
             {
@@ -68,7 +85,7 @@ namespace NuGetLite.Server.Core
                     Id = packageRegistrationBaseUrl
                 };
 
-                this.packages.Add(registrationIndex);
+                isNewPackageId = true;
             }
 
             RegistrationPage registrationPage = registrationIndex.Items.FirstOrDefault();
@@ -80,7 +97,11 @@ namespace NuGetLite.Server.Core
 
             var versions = registrationPage.Items.FirstOrDefault()?.CatalogEntry.Versions;
             var existingVersions = versions == null ? new List<NuGetPackageVersion>() : new List<NuGetPackageVersion>(versions);
-            existingVersions.Add(new NuGetPackageVersion() { PackageMetadataUrl = registrationServiceUrl + nuspecReader.GetId() + "/" + version, Version = nuspecReader.GetVersion().ToFullString(), Downloads = 0 });
+
+            bool versionExists = existingVersions.Any(v => v.Version == version);
+            if (versionExists)
+                throw new PackageVersionAlreadyExistsException($"The version {version} already exists for package {nuspecReader.GetId()}");
+            existingVersions.Add(new NuGetPackageVersion() { PackageMetadataUrl = registrationServiceUrl + nuspecReader.GetId() + "/" + version, Version = version, Downloads = 0 });
 
             var packageSummary = new NuGetPackageSummary()
             {
@@ -126,46 +147,19 @@ namespace NuGetLite.Server.Core
             registrationPage.Lower = lowerVersion;
             registrationPage.Upper = upperVersion;
 
-            indexingStopwatch.Stop();
-            logger.LogInformation(LoggingEvents.PackageIndexPackageIndexed, "Package {packageId}, version {version} indexed in {elapsed}", nuspecReader.GetId(), version, indexingStopwatch.Elapsed);
+            if(isNewPackageId)
+                await this.AddRegistrationResult(registrationIndex).ConfigureAwait(false);
 
-            return Task.FromResult(registrationIndex);
+            return registrationIndex;
         }
 
-        public Task<int> Count(string query, bool includePrerelease)
-        {
-            int count = (from r in this.packages
-                         from p in r.Items
-                         from l in p.Items
-                         where PackageMatchQuery(query, includePrerelease, l.CatalogEntry)
-                         select l.CatalogEntry).Count();
+        /// <summary>
+        /// Add a new <see cref="RegistrationResult"/> in the index
+        /// </summary>
+        /// <param name="registrationResult"></param>
+        /// <returns></returns>
+        protected abstract Task AddRegistrationResult(RegistrationResult registrationResult);
 
-            return Task.FromResult(count);
-        }
 
-        public Task<IEnumerable<NuGetPackageSummary>> SearchPackages(string query, int skip, int take, bool includePrerelease)
-        {
-            var results = (from r in this.packages
-                           from p in r.Items
-                           from l in p.Items
-                           where PackageMatchQuery(query, includePrerelease, l.CatalogEntry)
-                           select l.CatalogEntry).Skip(skip).Take(take);
-
-            return Task.FromResult(results);
-        }
-
-        private bool PackageMatchQuery(string query, bool includePrerelease, NuGetPackageSummary package)
-        {
-            if (!includePrerelease && package.IsPrerelease)
-                return false;
-
-            if (string.IsNullOrEmpty(query))
-                return true;
-
-            return package.Id.Contains(query.ToLower())
-                || (!string.IsNullOrEmpty(package.Title) && package.Title.Contains(query))
-                || (!string.IsNullOrEmpty(package.Description) && package.Description.Contains(query))
-                || (!string.IsNullOrEmpty(package.Tags) && package.Tags.Contains(query));
-        }
     }
 }

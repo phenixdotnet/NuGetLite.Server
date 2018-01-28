@@ -1,4 +1,5 @@
 ﻿using Newtonsoft.Json;
+using NuGetLite.Server.Core.PackageIndex;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -12,13 +13,6 @@ namespace NuGetLite.Server.Core
     /// </summary>
     public class NuGetPackageManager
     {
-        private static readonly JsonSerializerSettings jsonSerializerSettings = new JsonSerializerSettings()
-        {
-            Formatting = Formatting.Indented,
-            TypeNameHandling = TypeNameHandling.None,
-            ContractResolver = new Newtonsoft.Json.Serialization.CamelCasePropertyNamesContractResolver()
-        };
-
         private readonly IPersistentStorage packagesPersistentStorage;
         private readonly IPersistentStorage metadataPersistentStorage;
         private readonly INuGetPackageIndex packageIndex;
@@ -87,43 +81,17 @@ namespace NuGetLite.Server.Core
         private async Task PublishVersionIndexFile(NuGetPackageSummary packageSummary)
         {
             var versionIndexFilePath = $"{packageSummary.Id}/index.json";
-            var jsonSerializer = JsonSerializer.Create(jsonSerializerSettings);
-
             var versions = new
             {
                 versions = packageSummary.Versions.Select(v => v.Version)
             };
 
-            using (MemoryStream ms = new MemoryStream())
-            using (StreamWriter sw = new StreamWriter(ms))
-            using (JsonWriter jsonWriter = new JsonTextWriter(sw))
-            {
-                jsonSerializer.Serialize(jsonWriter, versions);
-
-                jsonWriter.Flush();
-                sw.Flush();
-
-                ms.Seek(0, SeekOrigin.Begin);
-                await packagesPersistentStorage.WriteContent(versionIndexFilePath, ms).ConfigureAwait(false);
-            }
+            await packagesPersistentStorage.WriteContent(versionIndexFilePath, versions).ConfigureAwait(false);
         }
 
         private async Task PublishRegistrationIndexFile(string packageName, RegistrationResult registrationResult)
         {
-            var jsonSerializer = JsonSerializer.Create(jsonSerializerSettings);
-
-            using (MemoryStream ms = new MemoryStream())
-            using (StreamWriter sw = new StreamWriter(ms))
-            using (JsonWriter jsonWriter = new JsonTextWriter(sw))
-            {
-                jsonSerializer.Serialize(jsonWriter, registrationResult);
-
-                jsonWriter.Flush();
-                sw.Flush();
-
-                ms.Seek(0, SeekOrigin.Begin);
-                await this.metadataPersistentStorage.WriteContent($"{packageName}/index.json", ms).ConfigureAwait(false);
-            }
+            await this.metadataPersistentStorage.WriteContent($"{packageName}/index.json", registrationResult).ConfigureAwait(false);
         }
     }
 }

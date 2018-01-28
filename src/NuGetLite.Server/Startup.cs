@@ -2,8 +2,11 @@
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using NuGetLite.Server.Core;
+using NuGetLite.Server.Core.PackageIndex;
 using NuGetLite.Server.Models;
+using System;
 using System.IO;
 
 namespace NuGetLite.Server
@@ -61,7 +64,29 @@ namespace NuGetLite.Server
         private void AddDependencies(IServiceCollection services)
         {
             services.AddSingleton<ServiceIndex>(CreateServiceIndex());
-            services.AddSingleton<INuGetPackageIndex, InMemoryNuGetPackageIndex>();
+            services.AddSingleton<INuGetPackageIndex>(serviceProvider =>
+            {
+                string packageIndexType = Configuration.GetValue<string>("PackageIndexType");
+                var serviceIndex = serviceProvider.GetService<ServiceIndex>();
+                INuGetPackageIndex instance = null;
+
+                if ("InMemory".Equals(packageIndexType, StringComparison.OrdinalIgnoreCase))
+                {
+                    var logger = serviceProvider.GetService<ILogger<InMemoryNuGetPackageIndex>>();
+                    instance = new InMemoryNuGetPackageIndex(serviceIndex, logger);
+                }
+                else if ("File".Equals(packageIndexType, StringComparison.OrdinalIgnoreCase))
+                {
+                    var logger = serviceProvider.GetService<ILogger<FileNuGetPackageIndex>>();
+                    instance = new FileNuGetPackageIndex(serviceIndex, new FilePersistentStorage("./metadata"), logger);
+                }
+                else
+                    throw new Exception($"Unknown package index type: '{packageIndexType}'");
+
+                instance.Initialize().Wait();
+
+                return instance;
+            });
             services.AddSingleton<NuGetPackageManager>(serviceProvider =>
             {
                 var packageIndex = serviceProvider.GetService<INuGetPackageIndex>();

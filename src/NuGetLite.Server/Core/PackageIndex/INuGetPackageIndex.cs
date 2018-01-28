@@ -2,13 +2,18 @@
 using System.Collections.Generic;
 using System.Threading.Tasks;
 
-namespace NuGetLite.Server.Core
+namespace NuGetLite.Server.Core.PackageIndex
 {
     /// <summary>
     /// Define the contract for a nuget package searcher
     /// </summary>
     public interface INuGetPackageIndex
     {
+        /// <summary>
+        /// Initializes the package index
+        /// </summary>
+        /// <returns></returns>
+        Task Initialize();
 
         /// <summary>
         /// Index a package from its metadata

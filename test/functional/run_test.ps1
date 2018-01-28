@@ -1,3 +1,24 @@
+[CmdletBinding()]
+Param(
+	[switch]$LaunchServer = $True,
+	[switch]$CleanServerDirectories = $True
+)
+$global:nugetServerLiteProcess = $null
+
+Function Start-NuGetLiteServer {
+
+	$nugetLiteServerBasePath = "..\..\src\NuGetLite.Server"
+
+	If ($CleanServerDirectories) {
+
+		rmdir "$nugetLiteServerBasePath\packages" -Recurse
+		rmdir "$nugetLiteServerBasePath\metadata" -Recurse
+	}
+
+	Start-Process -WorkingDirectory $nugetLiteServerBasePath -FilePath "dotnet" -ArgumentList "restore" -Wait
+	Start-Process -WorkingDirectory $nugetLiteServerBasePath -FilePath "dotnet" -ArgumentList "build -c Release" -Wait
+	$global:nugetServerLiteProcess = Start-Process -WorkingDirectory $nugetLiteServerBasePath -FilePath "dotnet" -ArgumentList "run -c Release" -PassThru
+}
 
 Function PushPackage {
 	Param (
@@ -22,6 +43,9 @@ Function PushPackage {
 	Invoke-WebRequest -UseBasicParsing "http://localhost:55983/v3-flatcontainer/$packageName/$packageVersion/$packageName.$packageVersion.nupkg" -OutFile "$packageName.$packageVersion.nupkg"
 }
 
+If ($LaunchServer) {
+	Start-NuGetLiteServer
+}
 
 Write-Host "Creating test package v1 and v2"
 
@@ -54,3 +78,6 @@ Pop-Location
 
 Write-Host "Searching for package q=''"
 Invoke-WebRequest "http://localhost:55983/query?q=&prerelease=false" -UseBasicParsing
+
+
+$global:nugetServerLiteProcess.Kill()
