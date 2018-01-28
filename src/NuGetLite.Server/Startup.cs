@@ -71,7 +71,7 @@ namespace NuGetLite.Server
 
         private ServiceIndex CreateServiceIndex()
         {
-            string baseUrl = "http://localhost:55983";
+            string baseUrl = this.Configuration.GetValue<string>("PublicBaseUrl");
 
             var resources = new ServiceIndexResource[]
             {
