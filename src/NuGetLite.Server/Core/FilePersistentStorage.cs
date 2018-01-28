@@ -55,7 +55,7 @@ namespace NuGetLite.Server.Core
             string directory = Path.GetDirectoryName(name);
             directory = Path.GetFullPath(Path.Combine(storageBasePath, directory));
 
-            if (!directory.StartsWith(this.storageBasePath))
+            if (!directory.StartsWith(this.storageBasePath, StringComparison.OrdinalIgnoreCase))
                 throw new Exception();
 
             string fileName = Path.GetFileName(name);

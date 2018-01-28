@@ -7,41 +7,57 @@ using System.IO;
 using System.Linq;
 using System.Linq.Expressions;
 using System.Threading.Tasks;
+using Microsoft.Extensions.Logging;
+using System.Diagnostics;
 
 namespace NuGetLite.Server.Core
 {
     public class InMemoryNuGetPackageIndex : INuGetPackageIndex
     {
+        private readonly ILogger<InMemoryNuGetPackageIndex> logger;
+
         private readonly HashSet<RegistrationResult> packages;
         private readonly ServiceIndex serviceIndex;
         private readonly string registrationServiceUrl;
         private readonly string packageContentServiceUrl;
-        private readonly IPersistentStorage persistentStorage;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="InMemoryNuGetPackageIndex"/> class
         /// </summary>
         /// <param name="serviceIndex">The service index instance to be used</param>
-        public InMemoryNuGetPackageIndex(ServiceIndex serviceIndex)
+        /// <param name="logger">The logger instance to be used</param>
+        public InMemoryNuGetPackageIndex(ServiceIndex serviceIndex, ILogger<InMemoryNuGetPackageIndex> logger)
         {
             if (serviceIndex == null)
                 throw new ArgumentNullException(nameof(serviceIndex));
+            if (logger == null)
+                throw new ArgumentNullException(nameof(logger));
 
+            this.logger = logger;
             this.packages = new HashSet<RegistrationResult>();
             this.serviceIndex = serviceIndex;
             this.registrationServiceUrl = serviceIndex.Resources.First(r => r.Type == ServiceIndexResourceType.RegistrationBaseUrl).Id;
             this.packageContentServiceUrl = serviceIndex.Resources.First(r => r.Type == ServiceIndexResourceType.PackageBaseAddress).Id;
         }
 
+        /// <summary>
+        /// Index a package from its metadata
+        /// </summary>
+        /// <param name="nuspecReader">The nuspec reader instance to be used to read metadata</param>
+        /// <returns>The <see cref="RegistrationResult"/> instance which correspond to the package</returns>
         public Task<RegistrationResult> IndexPackage(INuspecCoreReader nuspecReader)
         {
             if (nuspecReader == null)
                 throw new ArgumentNullException(nameof(nuspecReader));
 
+            var indexingStopwatch = Stopwatch.StartNew();
+
             var metadata = nuspecReader.GetMetadata();
 
             string version = nuspecReader.GetVersion().ToNormalizedString();
             string packageRegistrationBaseUrl = $"{registrationServiceUrl + nuspecReader.GetId()}/index.json";
+
+            logger.LogDebug(LoggingEvents.PackageIndexIndexingPackage, "Indexing package {packageId}, version {version}", nuspecReader.GetId(), version);
 
             RegistrationResult registrationIndex = this.packages.FirstOrDefault(p => p.Id == packageRegistrationBaseUrl);
 
@@ -110,6 +126,8 @@ namespace NuGetLite.Server.Core
             registrationPage.Lower = lowerVersion;
             registrationPage.Upper = upperVersion;
 
+            indexingStopwatch.Stop();
+            logger.LogInformation(LoggingEvents.PackageIndexPackageIndexed, "Package {packageId}, version {version} indexed in {elapsed}", nuspecReader.GetId(), version, indexingStopwatch.Elapsed);
 
             return Task.FromResult(registrationIndex);
         }
