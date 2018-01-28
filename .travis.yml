@@ -22,11 +22,13 @@ stages:
  jobs:
   include:
     - stage: test
+      language: csharp
       dotnet: 2.1.4
       script: dotnet restore NuGetLite.Server.sln
       script: dotnet build NuGetLite.Server.sln
       script: cd test/functional
     - stage: build_docker_image
+      language: csharp
       dotnet: 2.1.4
       script: cd src/NuGetLite.Server
       script: docker build .
