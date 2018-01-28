@@ -2,7 +2,6 @@ sudo: required
 services:
   - docker
 
- 
 language: csharp
 dotnet: 2.1.4
 mono: none
@@ -14,21 +13,8 @@ before_install:
   - sudo apt-get update
   - sudo apt-get -y install docker-ce
 
-stages:
-  - test
-  - name: build_docker_image
-    if: tag is present
-
- jobs:
-  include:
-    - stage: test
-      language: csharp
-      dotnet: 2.1.4
-      script: dotnet restore NuGetLite.Server.sln
-      script: dotnet build NuGetLite.Server.sln
-      script: cd test/functional
-    - stage: build_docker_image
-      language: csharp
-      dotnet: 2.1.4
-      script: cd src/NuGetLite.Server
-      script: docker build .
+script:
+ - dotnet restore NuGetLite.Server.sln
+ - dotnet build NuGetLite.Server.sln
+ - if [ -z "$TRAVIS_TAG" ]; then exit 0; fi
+ - echo "deploy"
