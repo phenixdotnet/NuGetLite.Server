@@ -7,6 +7,7 @@ pull_requests:
 skip_tags: true
 
 # Build config
-configuration: Release
-build:
-  verbosity: minimal
+build_script:
+  # dotnet info
+  - ps: dotnet restore NuGetLite.Server.sln
+  - ps: dotnet build NuGetLite.Server.sln
