@@ -1,7 +1,7 @@
 [CmdletBinding()]
 Param(
-	[switch]$LaunchServer = $True,
-	[switch]$CleanServerDirectories = $True
+	[boolean]$LaunchServer = $True,
+	[boolean]$CleanServerDirectories = $True
 )
 $global:nugetServerLiteProcess = $null
 
@@ -79,5 +79,6 @@ Pop-Location
 Write-Host "Searching for package q=''"
 Invoke-WebRequest "http://localhost:55983/query?q=&prerelease=false" -UseBasicParsing
 
-
-$global:nugetServerLiteProcess.Kill()
+If ($global:nugetServerLiteProcess -ne $null) {
+	$global:nugetServerLiteProcess.Kill()
+}

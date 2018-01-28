@@ -103,6 +103,9 @@ namespace NuGetLite.Server.Core.PackageIndex
                 throw new PackageVersionAlreadyExistsException($"The version {version} already exists for package {nuspecReader.GetId()}");
             existingVersions.Add(new NuGetPackageVersion() { PackageMetadataUrl = registrationServiceUrl + nuspecReader.GetId() + "/" + version, Version = version, Downloads = 0 });
 
+            foreach (var rl in registrationPage.Items)
+                rl.CatalogEntry.Versions = existingVersions;
+
             var packageSummary = new NuGetPackageSummary()
             {
                 PackageMetadataUrl = registrationServiceUrl + nuspecReader.GetId() + "/index.json",
