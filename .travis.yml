@@ -18,7 +18,9 @@ before_install:
 script:
  - dotnet restore NuGetLite.Server.sln
  - dotnet build NuGetLite.Server.sln
- - cd test/functional && ../../powershell/pwsh -nol -noni -f ./run_test.ps1 && cd ../../
+ - cd test/functional
+ - ../../powershell/pwsh -nol -noni -f ./run_test.ps1
+ - cd ../../
  - if [ -z "$TRAVIS_TAG" ]; then exit 0; fi
  - cd src/NuGetLite.Server
  - docker build -t nugetserverlite:$TRAVIS_TAG -t nugetserverlite:latest .
