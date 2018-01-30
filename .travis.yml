@@ -13,7 +13,7 @@ before_install:
   - sudo apt-get update
   - sudo apt-get -y install docker-ce
   - curl -L -o powershell.tar.gz https://github.com/PowerShell/PowerShell/releases/download/v6.0.1/powershell-6.0.1-linux-x64.tar.gz
-  - mkdir powershell && mv ./powershell.tar.gz ./powershell/powershell.tar.gz && cd ./powershell && tar xfz powershell.tar.gz
+  - mkdir powershell && mv ./powershell.tar.gz ./powershell/powershell.tar.gz && cd ./powershell && tar xfz powershell.tar.gz && cd ..
 
 script:
  - dotnet restore NuGetLite.Server.sln
