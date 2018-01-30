@@ -4,7 +4,7 @@ services:
 
 language: csharp
 dotnet: 2.1.4
-mono: none
+mono: latest
 
 # Upgrade to latest docker from docker.com
 before_install:
