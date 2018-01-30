@@ -3,21 +3,36 @@ Param(
 	[boolean]$LaunchServer = $True,
 	[boolean]$CleanServerDirectories = $True
 )
-$global:nugetServerLiteProcess = $null
 
 Function Start-NuGetLiteServer {
 
-	$nugetLiteServerBasePath = "..\..\src\NuGetLite.Server"
+	$nugetLiteServerBasePath = Join-Path $PSScriptRoot "..\..\src\NuGetLite.Server"
+	$binDirPath = Join-Path $nugetLiteServerBasePath "bin" "Release" "netcoreapp2.0"
+	$binPath = Join-Path $binDirPath "NuGetLite.Server.dll"
 
 	If ($CleanServerDirectories) {
 
-		rmdir "$nugetLiteServerBasePath\packages" -Recurse
-		rmdir "$nugetLiteServerBasePath\metadata" -Recurse
+		$packagePath = Join-Path $nugetLiteServerBasePath "packages"
+		$metadataPath = Join-Path $nugetLiteServerBasePath "metadata"
+		Remove-Item $packagePath -Recurse
+		Remove-Item $metadataPath -Recurse
+
+		Remove-Item $(Join-Path $binDirPath "packages") -Recurse
+		Remove-Item $(Join-Path $binDirPath "metadata") -Recurse
 	}
 
 	Start-Process -WorkingDirectory $nugetLiteServerBasePath -FilePath "dotnet" -ArgumentList "restore" -Wait
 	Start-Process -WorkingDirectory $nugetLiteServerBasePath -FilePath "dotnet" -ArgumentList "build -c Release" -Wait
-	$global:nugetServerLiteProcess = Start-Process -WorkingDirectory $nugetLiteServerBasePath -FilePath "dotnet" -ArgumentList "run -c Release" -PassThru
+
+	$ENV:ASPNETCORE_ENVIRONMENT="Development"
+	$ENV:ASPNETCORE_URLS="http://+:55983"
+	$ENV:PublicBaseUrl="http://localhost:55983"
+	$ENV:PackageIndexType="File"
+
+	$process = Start-Process -WorkingDirectory $binDirPath -FilePath "dotnet" -ArgumentList "exec $binPath" -PassThru
+	$script:nugetServerLiteProcess = $process
+
+	Start-Sleep 5
 }
 
 Function PushPackage {
@@ -31,7 +46,12 @@ Function PushPackage {
 
 
 	Write-Host "Pushing package $packageVersion to source"
-	.\nuget.exe push .\TestPackage\nupkg\$packageName.$packageVersion.nupkg -Source debug -ConfigFile .\NuGet.Config -Verbosity detailed
+	If ($PSVersionTable.Platform -eq "Unix") {
+		Start-Process -WorkingDirectory $PSScriptRoot -FilePath "mono" -ArgumentList "./nuget.exe push ./TestPackage/nupkg/$packageName.$packageVersion.nupkg -Source debug -ConfigFile ./NuGet.Config -Verbosity detailed" -Wait
+	}
+	else {
+		Start-Process -WorkingDirectory $PSScriptRoot -FilePath ".\nuget.exe" -ArgumentList "push .\TestPackage\nupkg\$packageName.$packageVersion.nupkg -Source debug -ConfigFile .\NuGet.Config -Verbosity detailed" -Wait
+	}
 
 	Write-Host "Looking for PackageBaseAddress resource for $packageName package"
 	Invoke-WebRequest -UseBasicParsing "http://localhost:55983/v3-flatcontainer/$packageName/index.json" 
@@ -49,11 +69,12 @@ If ($LaunchServer) {
 
 Write-Host "Creating test package v1 and v2"
 
-rmdir TestPackage -Recurse
-mkdir TestPackage
-Push-Location TestPackage
+$testPackagePath = Join-Path $PSScriptRoot "TestPackage"
+Remove-Item $testPackagePath -Recurse
+New-Item -ItemType Directory -Force -Path $testPackagePath
+Push-Location $testPackagePath
 
-dotnet new classlib
+dotnet new classlib --force
 
 Copy-Item ..\v1_TestPackage.csproj.txt .\TestPackage.csproj
 dotnet pack -o .\nupkg -c Release
@@ -66,19 +87,28 @@ Pop-Location
 PushPackage -packageName "TestPackage" -packageVersion "1.0.0"
 PushPackage -packageName "TestPackage" -packageVersion "2.0.0"
 
-rmdir TestApp -Recurse
-mkdir TestApp
+$testAppPath = Join-Path $PSScriptRoot "TestApp"
+Remove-Item $testAppPath -Recurse
+New-Item -ItemType Directory -Force -Path $testAppPath
 
-Push-Location "TestApp"
+Push-Location $testAppPath
 dotnet new console --force
 
-..\nuget.exe install TestPackage -Source debug -ConfigFile ..\NuGet.Config -Verbosity detailed
+If ($PSVersionTable.Platform -eq "Unix") {
+	Start-Process -WorkingDirectory $testAppPath -FilePath "mono" -ArgumentList "../nuget.exe install TestPackage -Source debug -ConfigFile ../NuGet.Config -Verbosity detailed" -Wait
+}
+else {
+	Start-Process -WorkingDirectory $testAppPath -FilePath "..\nuget.exe" -ArgumentList "install TestPackage -Source debug -ConfigFile ..\NuGet.Config -Verbosity detailed" -Wait
+}
 
 Pop-Location
 
 Write-Host "Searching for package q=''"
 Invoke-WebRequest "http://localhost:55983/query?q=&prerelease=false" -UseBasicParsing
 
-If ($global:nugetServerLiteProcess -ne $null) {
-	$global:nugetServerLiteProcess.Kill()
+If ($script:nugetServerLiteProcess -ne $null) {
+	
+	Write-Host "Killing server (process id: $($script:nugetServerLiteProcess.Id))"
+	$script:nugetServerLiteProcess.Kill()
+	$script:nugetServerLiteProcess.Close()
 }
