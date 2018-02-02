@@ -1,0 +1,17 @@
+version: '3'
+services:
+  nugetserverlite:
+    container_name: nugetserverlite
+    image: registry.digitaleo.com/vlaine/nugetserverlite:0.0.1-alpha1
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      ASPNETCORE_URLS: http://+:5000
+      PublicBaseUrl: http://odockerdev:8900
+      PackageIndexType: File
+    ports:
+      - "8900:5000"
+    deploy:
+      replicas: 1
+      resources:
+        limits:
+          memory: 1G
