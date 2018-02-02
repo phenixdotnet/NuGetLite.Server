@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Builder;
+﻿using Microsoft.ApplicationInsights;
+using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -68,6 +69,8 @@ namespace NuGetLite.Server
             {
                 string packageIndexType = Configuration.GetValue<string>("PackageIndexType");
                 var serviceIndex = serviceProvider.GetService<ServiceIndex>();
+                var telemetryClient = serviceProvider.GetService<TelemetryClient>();
+
                 INuGetPackageIndex instance = null;
 
                 if ("InMemory".Equals(packageIndexType, StringComparison.OrdinalIgnoreCase))
@@ -78,7 +81,7 @@ namespace NuGetLite.Server
                 else if ("File".Equals(packageIndexType, StringComparison.OrdinalIgnoreCase))
                 {
                     var logger = serviceProvider.GetService<ILogger<FileNuGetPackageIndex>>();
-                    instance = new FileNuGetPackageIndex(serviceIndex, new FilePersistentStorage("./metadata"), logger);
+                    instance = new FileNuGetPackageIndex(serviceIndex, new FilePersistentStorage("./metadata"), logger, telemetryClient);
                 }
                 else
                     throw new Exception($"Unknown package index type: '{packageIndexType}'");

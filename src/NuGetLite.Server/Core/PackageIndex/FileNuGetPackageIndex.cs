@@ -1,4 +1,6 @@
-﻿using Microsoft.Extensions.Logging;
+﻿using Microsoft.ApplicationInsights;
+using Microsoft.ApplicationInsights.DataContracts;
+using Microsoft.Extensions.Logging;
 using NuGet.Packaging.Core;
 using NuGetLite.Server.Models;
 using System;
@@ -15,6 +17,7 @@ namespace NuGetLite.Server.Core.PackageIndex
 
         private readonly List<RegistrationResult> packages;
         private readonly IPersistentStorage packageListStorage;
+        private readonly TelemetryClient telemetryClient;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="FileNuGetPackageIndex"/> class
@@ -22,15 +25,17 @@ namespace NuGetLite.Server.Core.PackageIndex
         /// <param name="serviceIndex">The service index instance to be used to generate package urls</param>
         /// <param name="packageListStorage">The <see cref="IPersistentStorage"/> instance to be used to persist the package list</param>
         /// <param name="logger">The logger instance to be used</param>
-        public FileNuGetPackageIndex(ServiceIndex serviceIndex, IPersistentStorage packageListStorage, ILogger<FileNuGetPackageIndex> logger)
+        /// <param name="telemetryClient">The telemetry client instance to be used</param>
+        public FileNuGetPackageIndex(ServiceIndex serviceIndex, IPersistentStorage packageListStorage, ILogger<FileNuGetPackageIndex> logger, TelemetryClient telemetryClient)
             : base(serviceIndex, logger)
         {
             if (packageListStorage == null)
-                throw new ArgumentNullException(nameof(packageListStorage));            
+                throw new ArgumentNullException(nameof(packageListStorage));
 
             this.packages = new List<RegistrationResult>();
             this.packageListStorage = packageListStorage;
             this.logger = logger;
+            this.telemetryClient = telemetryClient;
         }
 
         /// <summary>
@@ -68,6 +73,10 @@ namespace NuGetLite.Server.Core.PackageIndex
 
             indexingStopwatch.Stop();
             logger.LogInformation(LoggingEvents.PackageIndexPackageIndexed, "Package {packageId}, version {version} indexed in {elapsed}", nuspecReader.GetId(), version, indexingStopwatch.Elapsed);
+
+            var metricEvent = new EventTelemetry("PackageIndexed");
+            metricEvent.Metrics.Add("packageIndexed", indexingStopwatch.ElapsedMilliseconds);
+            telemetryClient.TrackEvent(metricEvent);
 
             return registrationIndex;
         }
