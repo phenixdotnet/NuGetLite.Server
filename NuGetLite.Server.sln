@@ -1,11 +1,11 @@
-﻿
+
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 15
 VisualStudioVersion = 15.0.27205.2004
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{BE8C4785-4E38-4E18-B5E3-0C10D8BBA349}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NuGetLite.Server", "src\NuGetLite.Server\NuGetLite.Server.csproj", "{4882FE70-ABDA-4FC8-9CF0-DE5C3DF67368}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "NuGetLite.Server", "src\NuGetLite.Server\NuGetLite.Server.csproj", "{4882FE70-ABDA-4FC8-9CF0-DE5C3DF67368}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

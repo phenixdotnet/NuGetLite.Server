@@ -1,0 +1,8 @@
+version: '3'
+
+services:
+  nugetlite.server:
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+    ports:
+      - "80"

@@ -1,0 +1,60 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: nugetserverlite-pv-claim
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 5Gi
+---
+apiVersion: apps/v1beta2 # for versions from 1.9.0 use apps/v1
+kind: Deployment
+metadata:
+  name: nugetserverlite-deployment
+spec:
+  selector:
+    matchLabels:
+      app: nugetserverlite
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: nugetserverlite
+    spec:
+      containers:
+      - name: nugetserverlite
+        image: nugetserverlite:0.0.1-alpha1
+        ports:
+          - containerPort: 80
+        env:
+          - name: "ASPNETCORE_ENVIRONMENT"
+            value: "Production"
+          - name: "ASPNETCORE_URLS"
+            value: "http://+80"
+          - name: "PublicBaseUrl"
+            value: "http://nugetserver.local:30001"
+          - name: "PackageIndexType"
+            value: "File"
+        volumeMounts:
+        - name: nugetserverlite-persistent-storage
+          mountPath: /app/packages
+      volumes:
+      - name: nugetserverlite-persistent-storage
+        persistentVolumeClaim:
+          claimName: nugetserverlite-pv-claim
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: nugetserverlite
+spec:
+  selector:
+    app: nugetserverlite
+  type: NodePort
+  ports:
+  - port: 8888
+    targetPort: 80
+    nodePort: 30001
+    name: nugetserverliteport

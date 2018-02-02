@@ -1,0 +1,17 @@
+version: 1.0.{build}
+image: Visual Studio 2017
+
+# Repo config
+pull_requests:
+  do_not_increment_build_number: true
+skip_tags: true
+
+# Build config
+build_script:
+  # dotnet info
+  - ps: dotnet restore NuGetLite.Server.sln
+  - ps: dotnet build NuGetLite.Server.sln
+
+after_test:
+  - ps: Push-Location test\functional
+  - ps: .\run_test.ps1

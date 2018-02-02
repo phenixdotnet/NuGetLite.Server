@@ -2,8 +2,11 @@
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using NuGetLite.Server.Core;
+using NuGetLite.Server.Core.PackageIndex;
 using NuGetLite.Server.Models;
+using System;
 using System.IO;
 
 namespace NuGetLite.Server
@@ -37,17 +40,23 @@ namespace NuGetLite.Server
             app.UseNuGetServiceIndex();
 
             // Add package registration resource as StaticFile
+            string metadataDir = Path.GetFullPath("./metadata");
+            if (!Directory.Exists(metadataDir))
+                Directory.CreateDirectory(metadataDir);
             app.UseStaticFiles(new StaticFileOptions()
             {
                 RequestPath = "/registration",
-                FileProvider = new Microsoft.Extensions.FileProviders.PhysicalFileProvider(Path.GetFullPath("./metadata"))
+                FileProvider = new Microsoft.Extensions.FileProviders.PhysicalFileProvider(metadataDir)
             });
 
             // Add package base resource handler as StaticFile
+            string packagesDir = Path.GetFullPath("./packages");
+            if (!Directory.Exists(packagesDir))
+                Directory.CreateDirectory(packagesDir);
             app.UseStaticFiles(new StaticFileOptions()
             {
                 RequestPath = "/v3-flatcontainer",
-                FileProvider = new Microsoft.Extensions.FileProviders.PhysicalFileProvider(Path.GetFullPath("./packages")),
+                FileProvider = new Microsoft.Extensions.FileProviders.PhysicalFileProvider(packagesDir),
                 ContentTypeProvider = new NuGetContentTypeProvider() // We serve .json, .nuspec and .nupkg files
             });
         }
@@ -55,14 +64,39 @@ namespace NuGetLite.Server
         private void AddDependencies(IServiceCollection services)
         {
             services.AddSingleton<ServiceIndex>(CreateServiceIndex());
-            services.AddSingleton<IPersistentStorage, FilePersistentStorage>();
-            services.AddSingleton<INuGetPackageIndex, InMemoryNuGetPackageIndex>();
-            services.AddSingleton<NuGetPackageManager>();
+            services.AddSingleton<INuGetPackageIndex>(serviceProvider =>
+            {
+                string packageIndexType = Configuration.GetValue<string>("PackageIndexType");
+                var serviceIndex = serviceProvider.GetService<ServiceIndex>();
+                INuGetPackageIndex instance = null;
+
+                if ("InMemory".Equals(packageIndexType, StringComparison.OrdinalIgnoreCase))
+                {
+                    var logger = serviceProvider.GetService<ILogger<InMemoryNuGetPackageIndex>>();
+                    instance = new InMemoryNuGetPackageIndex(serviceIndex, logger);
+                }
+                else if ("File".Equals(packageIndexType, StringComparison.OrdinalIgnoreCase))
+                {
+                    var logger = serviceProvider.GetService<ILogger<FileNuGetPackageIndex>>();
+                    instance = new FileNuGetPackageIndex(serviceIndex, new FilePersistentStorage("./metadata"), logger);
+                }
+                else
+                    throw new Exception($"Unknown package index type: '{packageIndexType}'");
+
+                instance.Initialize().Wait();
+
+                return instance;
+            });
+            services.AddSingleton<NuGetPackageManager>(serviceProvider =>
+            {
+                var packageIndex = serviceProvider.GetService<INuGetPackageIndex>();
+                return new NuGetPackageManager(new FilePersistentStorage("./packages"), new FilePersistentStorage("./metadata"), packageIndex);
+            });
         }
 
         private ServiceIndex CreateServiceIndex()
         {
-            string baseUrl = "http://localhost:49869";
+            string baseUrl = this.Configuration.GetValue<string>("PublicBaseUrl");
 
             var resources = new ServiceIndexResource[]
             {

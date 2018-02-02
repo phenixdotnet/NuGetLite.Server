@@ -2,20 +2,25 @@
 using System.Collections.Generic;
 using System.Threading.Tasks;
 
-namespace NuGetLite.Server.Core
+namespace NuGetLite.Server.Core.PackageIndex
 {
     /// <summary>
     /// Define the contract for a nuget package searcher
     /// </summary>
     public interface INuGetPackageIndex
     {
+        /// <summary>
+        /// Initializes the package index
+        /// </summary>
+        /// <returns></returns>
+        Task Initialize();
 
         /// <summary>
         /// Index a package from its metadata
         /// </summary>
         /// <param name="nuspecReader">The nuspec reader instance to be used to read metadata</param>
         /// <returns></returns>
-        Task<NuGetPackageSummary> IndexPackage(INuspecCoreReader nuspecReader);
+        Task<RegistrationResult> IndexPackage(INuspecCoreReader nuspecReader);
 
         /// <summary>
         /// Gets count packages match the <paramref name="query"/>
