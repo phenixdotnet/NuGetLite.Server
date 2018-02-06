@@ -2,7 +2,7 @@ version: '3'
 services:
   nugetserverlite:
     container_name: nugetserverlite
-    image: registry.digitaleo.com/vlaine/nugetserverlite:0.0.1-alpha1
+    image: registry.digitaleo.com/vlaine/nugetserverlite:0.0.1-alpha2
     environment:
       ASPNETCORE_ENVIRONMENT: Production
       ASPNETCORE_URLS: http://+:5000
@@ -10,8 +10,15 @@ services:
       PackageIndexType: File
     ports:
       - "8900:5000"
+    volumes:
+      - packagesvolume:/app/packages
+      - metadatavolume:/app/metadata
     deploy:
       replicas: 1
       resources:
         limits:
           memory: 1G
+
+volumes:
+  packagesvolume:
+  metadatavolume:
