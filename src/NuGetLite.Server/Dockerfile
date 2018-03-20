@@ -1,8 +1,8 @@
-FROM microsoft/aspnetcore:2 AS base
+FROM microsoft/aspnetcore:2.1-preview1 AS base
 WORKDIR /app
 EXPOSE 80
 
-FROM microsoft/aspnetcore-build:2 AS build
+FROM microsoft/aspnetcore-build:2.1.300-preview1 AS build
 WORKDIR /src
 COPY NuGetLite.Server.sln ./
 COPY src/NuGetLite.Server/NuGetLite.Server.csproj src/NuGetLite.Server/
