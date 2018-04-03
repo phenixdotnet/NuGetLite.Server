@@ -97,6 +97,24 @@ namespace NuGetLite.Server.Core.PackageIndex
             return Task.FromResult(results);
         }
 
+        protected override Task IncrementDownloadCounterCore(string packageName, string version)
+        {
+            var versionnedPackages = (from r in this.packages
+                                      from p in r.Items
+                                      from l in p.Items
+                                      from pa in l.CatalogEntry.Versions
+                                      where l.CatalogEntry.Id == packageName && pa.Version == version
+                                      select pa);
+
+            if (versionnedPackages != null)
+            {
+                foreach (var versionnedPackage in versionnedPackages)
+                    ++versionnedPackage.Downloads;
+            }
+
+            return Task.CompletedTask;
+        }
+
         protected override Task AddRegistrationResult(RegistrationResult registrationResult)
         {
             this.packages.Add(registrationResult);

@@ -23,6 +23,13 @@ namespace NuGetLite.Server.Core.PackageIndex
         Task<RegistrationResult> IndexPackage(INuspecCoreReader nuspecReader);
 
         /// <summary>
+        /// Increment the package download counter for the package specified by the <paramref name="packageFilePath"/>
+        /// </summary>
+        /// <param name="packageFilePath">The package file path which should be used to find the package</param>
+        /// <returns></returns>
+        Task IncrementDownloadCounter(string packageFilePath);
+
+        /// <summary>
         /// Gets count packages match the <paramref name="query"/>
         /// </summary>
         /// <param name="query">The query to be used to search the packages</param>

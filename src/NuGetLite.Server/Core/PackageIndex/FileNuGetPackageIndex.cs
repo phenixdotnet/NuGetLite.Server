@@ -69,7 +69,7 @@ namespace NuGetLite.Server.Core.PackageIndex
             RegistrationResult registrationIndex = this.packages.FirstOrDefault(p => p.Id == packageRegistrationBaseUrl);
             registrationIndex = await this.IndexPackageCore(nuspecReader, registrationIndex).ConfigureAwait(false);
 
-            await this.packageListStorage.WriteContent("packages.json", this.packages).ConfigureAwait(false);
+            await this.SavePackageIndex().ConfigureAwait(false);
 
             indexingStopwatch.Stop();
             logger.LogInformation(LoggingEvents.PackageIndexPackageIndexed, "Package {packageId}, version {version} indexed in {elapsed}", nuspecReader.GetId(), version, indexingStopwatch.Elapsed);
@@ -117,6 +117,23 @@ namespace NuGetLite.Server.Core.PackageIndex
             return Task.FromResult(results);
         }
 
+        protected override async Task IncrementDownloadCounterCore(string packageName, string version)
+        {
+            var versionnedPackages = (from r in this.packages
+                                      from p in r.Items
+                                      from l in p.Items
+                                      from pa in l.CatalogEntry.Versions
+                                      where l.CatalogEntry.Id == packageName && pa.Version == version
+                                      select pa);
+
+            if (versionnedPackages != null)
+            {
+                foreach (var versionnedPackage in versionnedPackages)
+                    ++versionnedPackage.Downloads;
+                await this.SavePackageIndex().ConfigureAwait(false);
+            }
+        }
+
         protected override Task AddRegistrationResult(RegistrationResult registrationResult)
         {
             this.packages.Add(registrationResult);
@@ -136,6 +153,11 @@ namespace NuGetLite.Server.Core.PackageIndex
                 || (!string.IsNullOrEmpty(package.Title) && package.Title.Contains(query))
                 || (!string.IsNullOrEmpty(package.Description) && package.Description.Contains(query))
                 || (!string.IsNullOrEmpty(package.Tags) && package.Tags.Contains(query));
+        }
+
+        private async Task SavePackageIndex()
+        {
+            await this.packageListStorage.WriteContent("packages.json", this.packages).ConfigureAwait(false);
         }
     }
 }

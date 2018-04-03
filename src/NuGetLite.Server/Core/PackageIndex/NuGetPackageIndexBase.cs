@@ -3,6 +3,7 @@ using NuGet.Packaging.Core;
 using NuGetLite.Server.Models;
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 
@@ -46,6 +47,29 @@ namespace NuGetLite.Server.Core.PackageIndex
         /// <param name="nuspecReader">The nuspec reader instance to be used to read metadata</param>
         /// <returns>The <see cref="RegistrationResult"/> instance which correspond to the package</returns>
         public abstract Task<RegistrationResult> IndexPackage(INuspecCoreReader nuspecReader);
+
+        /// <summary>
+        /// Increment the package download counter for the package specified by the <paramref name="packageFilePath"/>
+        /// </summary>
+        /// <param name="packageFilePath">The package file path which should be used to find the package</param>
+        /// <returns></returns>
+        public async Task IncrementDownloadCounter(string packageFilePath)
+        {
+            if (string.IsNullOrEmpty(packageFilePath))
+                throw new ArgumentNullException(nameof(packageFilePath));
+
+            // BASEPATH\TestPackage\1.0.0\TestPackage.nuspec
+            var packagePathParts = packageFilePath.Split(Path.DirectorySeparatorChar).TakeLast(3).ToArray(); // packagePathParts contains PackageName at index 0, version at index 1, package file name at index 2
+            await IncrementDownloadCounterCore(packagePathParts[0], packagePathParts[1]).ConfigureAwait(false);
+        }
+
+        /// <summary>
+        /// Increment the package download counter for the <paramref name="packageName"/> and version <paramref name="version"/>
+        /// </summary>
+        /// <param name="packageName"></param>
+        /// <param name="version"></param>
+        /// <returns></returns>
+        protected abstract Task IncrementDownloadCounterCore(string packageName, string version);
 
         /// <summary>
         /// Gets count packages match the <paramref name="query"/>

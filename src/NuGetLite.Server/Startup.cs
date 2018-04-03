@@ -54,11 +54,13 @@ namespace NuGetLite.Server
             string packagesDir = Path.GetFullPath("./packages");
             if (!Directory.Exists(packagesDir))
                 Directory.CreateDirectory(packagesDir);
+
             app.UseStaticFiles(new StaticFileOptions()
             {
                 RequestPath = "/v3-flatcontainer",
                 FileProvider = new Microsoft.Extensions.FileProviders.PhysicalFileProvider(packagesDir),
-                ContentTypeProvider = new NuGetContentTypeProvider() // We serve .json, .nuspec and .nupkg files
+                ContentTypeProvider = new NuGetContentTypeProvider(), // We serve .json, .nuspec and .nupkg files
+                OnPrepareResponse = PackageProviderResponseHelper.OnPrepareResponse
             });
         }
 
