@@ -46,5 +46,12 @@ namespace NuGetLite.Server.Core.PackageIndex
         /// <param name="includePrerelease">A value indicating if the pre release packages should be included or not</param>
         /// <returns></returns>
         Task<IEnumerable<NuGetPackageSummary>> SearchPackages(string query, int skip, int take, bool includePrerelease);
+
+        /// <summary>
+        /// Gets all versions for the <paramref name="packageId"/>
+        /// </summary>
+        /// <param name="packageId">The package id to be used</param>
+        /// <returns></returns>
+        Task<IEnumerable<string>> GetAllVersions(string packageId);
     }
 }

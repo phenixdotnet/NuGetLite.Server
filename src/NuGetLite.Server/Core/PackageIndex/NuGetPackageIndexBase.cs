@@ -89,6 +89,8 @@ namespace NuGetLite.Server.Core.PackageIndex
         /// <returns></returns>
         public abstract Task<IEnumerable<NuGetPackageSummary>> SearchPackages(string query, int skip, int take, bool includePrerelease);
 
+        public abstract Task<IEnumerable<string>> GetAllVersions(string packageId);
+
         /// <summary>
         /// Handle the logic to index a package from the <paramref name="nuspecReader"/> and store information in the <paramref name="registrationIndex"/> if provided or create a new entry
         /// </summary>
@@ -119,24 +121,18 @@ namespace NuGetLite.Server.Core.PackageIndex
                 registrationIndex.Items.Add(registrationPage);
             }
 
-            var versions = registrationPage.Items.FirstOrDefault()?.CatalogEntry.Versions;
-            var existingVersions = versions == null ? new List<NuGetPackageVersion>() : new List<NuGetPackageVersion>(versions);
-
-            bool versionExists = existingVersions.Any(v => v.Version == version);
+            bool versionExists = this.IsVersionAlreadyExisting(nuspecReader.GetId(), version);
             if (versionExists)
                 throw new PackageVersionAlreadyExistsException($"The version {version} already exists for package {nuspecReader.GetId()}");
-            existingVersions.Add(new NuGetPackageVersion() { PackageMetadataUrl = registrationServiceUrl + nuspecReader.GetId() + "/" + version, Version = version, Downloads = 0 });
-
-            foreach (var rl in registrationPage.Items)
-                rl.CatalogEntry.Versions = existingVersions;
-
+            
             var packageSummary = new NuGetPackageSummary()
             {
                 PackageMetadataUrl = registrationServiceUrl + nuspecReader.GetId() + "/index.json",
                 Id = nuspecReader.GetId(),
-                Version = nuspecReader.GetVersion().ToFullString(),
-                Versions = existingVersions
+                Version = nuspecReader.GetVersion().ToFullString()
             };
+
+            await this.AddNewVersion(packageSummary.Id, new NuGetPackageVersion() { PackageMetadataUrl = registrationServiceUrl + nuspecReader.GetId() + "/" + version, Version = version, Downloads = 0 });
 
             foreach (var m in metadata)
             {
@@ -166,9 +162,10 @@ namespace NuGetLite.Server.Core.PackageIndex
             registrationLeaf.CatalogEntry = packageSummary;
             registrationLeaf.PackageContent = $"{this.packageContentServiceUrl}{nuspecReader.GetId()}/{version}/{nuspecReader.GetId()}.{version}.nupkg";
 
-            string lowerVersion = packageSummary.Versions.First().Version;
-            string upperVersion = packageSummary.Versions.Last().Version;
-
+            var versions = await this.GetAllVersions(packageSummary.Id).ConfigureAwait(false);
+            string lowerVersion = versions.First();
+            string upperVersion = versions.Last();
+            
             registrationPage.Id = $"{registrationServiceUrl + nuspecReader.GetId()}/index.json/#page/{lowerVersion}/{upperVersion}";
             registrationPage.Items.Add(registrationLeaf);
             registrationPage.Lower = lowerVersion;
@@ -187,6 +184,20 @@ namespace NuGetLite.Server.Core.PackageIndex
         /// <returns></returns>
         protected abstract Task AddRegistrationResult(RegistrationResult registrationResult);
 
+        /// <summary>
+        /// Gets a value indicating if the <paramref name="version"/> is already in the package index
+        /// </summary>
+        /// <param name="packageId"></param>
+        /// <param name="version">The version number which should be checked</param>
+        /// <returns></returns>
+        protected abstract bool IsVersionAlreadyExisting(string packageId, string version);
 
+        /// <summary>
+        /// Add a new version of a package
+        /// </summary>
+        /// <param name="packageId"></param>
+        /// <param name="nuGetPackageVersion"></param>
+        /// <returns></returns>
+        protected abstract Task AddNewVersion(string packageId, NuGetPackageVersion nuGetPackageVersion);
     }
 }

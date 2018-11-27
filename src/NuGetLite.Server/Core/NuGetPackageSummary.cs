@@ -47,10 +47,6 @@ namespace NuGetLite.Server.Core
         public string Version
         { get; set; }
 
-        public IEnumerable<NuGetPackageVersion> Versions
-        { get; set; }
-
-
         public bool IsPrerelease
         { get; set; }
 

@@ -1,14 +1,11 @@
-﻿using Newtonsoft.Json;
+﻿using Microsoft.Extensions.Logging;
 using NuGet.Packaging.Core;
 using NuGetLite.Server.Models;
 using System;
 using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-using System.Linq.Expressions;
-using System.Threading.Tasks;
-using Microsoft.Extensions.Logging;
 using System.Diagnostics;
+using System.Linq;
+using System.Threading.Tasks;
 
 namespace NuGetLite.Server.Core.PackageIndex
 {
@@ -17,6 +14,7 @@ namespace NuGetLite.Server.Core.PackageIndex
         private readonly ILogger<InMemoryNuGetPackageIndex> logger;
 
         private readonly HashSet<RegistrationResult> packages;
+        private readonly Dictionary<string, List<NuGetPackageVersion>> versions;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="InMemoryNuGetPackageIndex"/> class
@@ -33,6 +31,7 @@ namespace NuGetLite.Server.Core.PackageIndex
 
             this.logger = logger;
             this.packages = new HashSet<RegistrationResult>();
+            this.versions = new Dictionary<string, List<NuGetPackageVersion>>();
         }
 
         /// <summary>
@@ -97,19 +96,30 @@ namespace NuGetLite.Server.Core.PackageIndex
             return Task.FromResult(results);
         }
 
+        /// <summary>
+        /// Gets all versions for the <paramref name="packageId"/>
+        /// </summary>
+        /// <param name="packageId">The package id to be used</param>
+        /// <returns></returns>
+        public override Task<IEnumerable<string>> GetAllVersions(string packageId)
+        {
+            var versions = from v in this.versions[packageId]
+                           select v.Version;
+
+            return Task.FromResult(versions);
+        }
+
         protected override Task IncrementDownloadCounterCore(string packageName, string version)
         {
-            var versionnedPackages = (from r in this.packages
-                                      from p in r.Items
-                                      from l in p.Items
-                                      from pa in l.CatalogEntry.Versions
-                                      where l.CatalogEntry.Id == packageName && pa.Version == version
-                                      select pa);
-
-            if (versionnedPackages != null)
+            string key = packageName + version;
+            if (this.versions.ContainsKey(key))
             {
-                foreach (var versionnedPackage in versionnedPackages)
-                    ++versionnedPackage.Downloads;
+                var packageVersion = (from v in versions[packageName]
+                                      where v.Version == version
+                                      select v).First();
+
+
+                ++packageVersion.Downloads;
             }
 
             return Task.CompletedTask;
@@ -133,6 +143,19 @@ namespace NuGetLite.Server.Core.PackageIndex
                 || (!string.IsNullOrEmpty(package.Title) && package.Title.Contains(query))
                 || (!string.IsNullOrEmpty(package.Description) && package.Description.Contains(query))
                 || (!string.IsNullOrEmpty(package.Tags) && package.Tags.Contains(query));
+        }
+
+        protected override bool IsVersionAlreadyExisting(string packageId, string version)
+        {
+            return this.versions.ContainsKey(packageId + version);
+        }
+
+        protected override Task AddNewVersion(string packageId, NuGetPackageVersion nuGetPackageVersion)
+        {
+            if (!this.versions.ContainsKey(packageId))
+                this.versions.Add(packageId, new List<NuGetPackageVersion>());
+            this.versions[packageId].Add(nuGetPackageVersion);
+            return Task.CompletedTask;
         }
     }
 }

@@ -74,19 +74,21 @@ namespace NuGetLite.Server.Core
                 await this.PublishRegistrationIndexFile(packageName, packageRegistrationResult).ConfigureAwait(false);
 
                 // Write the version index.json file
-                await this.PublishVersionIndexFile(packageRegistrationResult.Items.Last().Items.Last().CatalogEntry).ConfigureAwait(false);
+                string packageId = packageRegistrationResult.Items.Last().Items.Last().CatalogEntry.Id;
+                var versions = await this.packageIndex.GetAllVersions(packageId);
+                await this.PublishVersionIndexFile(packageId, versions).ConfigureAwait(false);
             }
         }
 
-        private async Task PublishVersionIndexFile(NuGetPackageSummary packageSummary)
+        private async Task PublishVersionIndexFile(string packageId, IEnumerable<string> versions)
         {
-            var versionIndexFilePath = $"{packageSummary.Id}/index.json";
-            var versions = new
+            var versionIndexFilePath = $"{packageId}/index.json";
+            var versionsObj = new
             {
-                versions = packageSummary.Versions.Select(v => v.Version)
+                versions = versions
             };
 
-            await packagesPersistentStorage.WriteContent(versionIndexFilePath, versions).ConfigureAwait(false);
+            await packagesPersistentStorage.WriteContent(versionIndexFilePath, versionsObj).ConfigureAwait(false);
         }
 
         private async Task PublishRegistrationIndexFile(string packageName, RegistrationResult registrationResult)
